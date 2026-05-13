@@ -255,5 +255,48 @@ window.PlotlyInterop = {
         if (el) {
             Plotly.purge(el);
         }
+    },
+
+    renderSimpleBar: function (elementId, labels, values, title) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const data = [{
+            x: labels,
+            y: values,
+            type: 'bar',
+            marker: { color: '#C8FF00' }
+        }];
+        const layout = {
+            title: title || '',
+            paper_bgcolor: '#0F1216',
+            plot_bgcolor: '#0F1216',
+            font: { family: 'Syne, sans-serif', color: '#EEEEE9' },
+            xaxis: { color: '#8899BB', tickangle: -35 },
+            yaxis: { color: '#8899BB', gridcolor: '#1A2030' },
+            margin: { t: 40, r: 20, b: 80, l: 50 }
+        };
+        Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
+    },
+
+    renderHorizontalBar: function (elementId, labels, values, title) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const data = [{
+            y: labels,
+            x: values,
+            type: 'bar',
+            orientation: 'h',
+            marker: { color: '#4FC3F7' }
+        }];
+        const layout = {
+            title: title || '',
+            paper_bgcolor: '#0F1216',
+            plot_bgcolor: '#0F1216',
+            font: { family: 'Syne, sans-serif', color: '#EEEEE9' },
+            xaxis: { color: '#8899BB', gridcolor: '#1A2030' },
+            yaxis: { color: '#8899BB', automargin: true },
+            margin: { t: 40, r: 20, b: 40, l: 120 }
+        };
+        Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
     }
 };
