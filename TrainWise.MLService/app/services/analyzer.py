@@ -112,8 +112,8 @@ def analyze_dataset(file_path: str, dataset_id: str) -> DatasetSummary:
     )
 
 
-def generate_eda_report(dataset_id: str, target_column: Optional[str] = None) -> EdaReport:
-    file_path = get_dataset_path(dataset_id)
+def generate_eda_report(dataset_id: str, target_column: Optional[str] = None, file_path: Optional[str] = None) -> EdaReport:
+    file_path = file_path or get_dataset_path(dataset_id)
     if not file_path:
         raise ValueError("Dataset path not found. Re-run analyze for this dataset.")
 

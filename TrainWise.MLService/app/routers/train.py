@@ -1,5 +1,5 @@
 from typing import Any
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.models.dataset_summary import DatasetSummary
 from app.models.train_request import TrainRequest
@@ -25,6 +25,7 @@ class RecommendRequest(BaseModel):
 class EdaRequest(BaseModel):
     datasetId: str
     targetColumn: str | None = None
+    filePath: str | None = None
 
 @router.post("/analyze", response_model=DatasetSummary)
 async def analyze(request: AnalyzeRequest) -> DatasetSummary:
@@ -67,4 +68,7 @@ async def eda(request: EdaRequest) -> EdaReport:
     """
     Generate deeper EDA insights for the selected dataset.
     """
-    return generate_eda_report(request.datasetId, request.targetColumn)
+    try:
+        return generate_eda_report(request.datasetId, request.targetColumn, request.filePath)
+    except ValueError as ex:
+        raise HTTPException(status_code=400, detail=str(ex))
