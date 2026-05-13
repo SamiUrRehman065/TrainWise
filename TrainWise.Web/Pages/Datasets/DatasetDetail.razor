@@ -38,6 +38,7 @@ else
             <p class="lead">Dataset analysis and metadata</p>
         </div>
         <div class="header-actions">
+            <a class="button primary" href="@($"/datasets/{Id}/eda")">Open EDA Dashboard</a>
             <button class="button ghost" @onclick="DeleteAsync">Delete</button>
         </div>
     </section>
@@ -115,6 +116,39 @@ else
 
     @* Related Experiments *@
     <div class="detail-section">
+        <div class="section-head">
+            <h3>EDA Insights</h3>
+            <button class="button small ghost" @onclick="RunEdaAsync" disabled="_isEdaLoading">@( _isEdaLoading ? "Running..." : "Refresh EDA")</button>
+        </div>
+        @if (_eda is null)
+        {
+            <p class="muted">No EDA report loaded yet. Click <strong>Refresh EDA</strong>.</p>
+        }
+        else
+        {
+            <div class="overview-grid">
+                <div class="ov-item"><span class="ov-label">Memory</span><span class="ov-value">@_eda.MemoryUsageMb.ToString("0.00") MB</span></div>
+                <div class="ov-item"><span class="ov-label">Duplicate Rows</span><span class="ov-value">@_eda.DuplicateRows (@_eda.DuplicatePercentage.ToString("0.##")%)</span></div>
+                <div class="ov-item"><span class="ov-label">Numeric Columns</span><span class="ov-value">@_eda.NumericColumns.Count</span></div>
+                <div class="ov-item"><span class="ov-label">Categorical Columns</span><span class="ov-value">@_eda.CategoricalColumns.Count</span></div>
+            </div>
+
+            @if (_eda.TopTargetCorrelations.Any())
+            {
+                <h4 style="margin-top:16px;">Top Feature Correlations</h4>
+                @foreach (var c in _eda.TopTargetCorrelations)
+                {
+                    var width = (int)(Math.Min(1, Math.Abs(c.Correlation)) * 100);
+                    <div class="bar-row">
+                        <span class="bar-label">@c.Feature (@c.Correlation.ToString("0.###"))</span>
+                        <div class="bar-track"><div class="bar-fill" style="width:@($"{width}%")"></div></div>
+                    </div>
+                }
+            }
+        }
+    </div>
+
+    <div class="detail-section">
         <h3>Related Experiments</h3>
         @if (_relatedExperiments?.Any() == true)
         {
@@ -144,6 +178,8 @@ else
 
     private DatasetSummary? _summary;
     private List<ExperimentListItem>? _relatedExperiments;
+    private EdaReport? _eda;
+    private bool _isEdaLoading;
     private bool _isLoading = true;
     private string _datasetName = "Dataset";
     private DateTime _uploadedAt = DateTime.MinValue;
@@ -190,6 +226,7 @@ else
                         .OrderByDescending(e => e.CreatedAt)
                         .ToList();
                 }
+                await RunEdaAsync();
             }
         }
         catch (Exception ex)
@@ -199,6 +236,22 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task RunEdaAsync()
+    {
+        if (!Guid.TryParse(Id, out var datasetId))
+            return;
+        _isEdaLoading = true;
+        try
+        {
+            var target = _summary?.Columns.LastOrDefault();
+            _eda = await DatasetApi.GetEdaAsync(datasetId, target);
+        }
+        finally
+        {
+            _isEdaLoading = false;
         }
     }
 
@@ -248,6 +301,11 @@ else
         padding-bottom: var(--space-3);
         border-bottom: 1px solid var(--color-border);
     }
+    .section-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .bar-row { margin-top:8px; }
+    .bar-label { font-size:12px; color:var(--color-text-secondary); display:block; margin-bottom:4px; }
+    .bar-track { background:var(--color-border); height:8px; border-radius:20px; overflow:hidden; }
+    .bar-fill { background:var(--color-accent); height:8px; }
 
     .overview-grid {
         display: grid;

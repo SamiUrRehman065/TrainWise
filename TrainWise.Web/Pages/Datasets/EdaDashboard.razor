@@ -1,0 +1,71 @@
+@page "/datasets/{Id}/eda"
+@inject TrainWise.Web.Services.Api.DatasetApi DatasetApi
+@inject IJSRuntime JS
+
+<h1>Dataset EDA Dashboard</h1>
+
+@if (_loading)
+{
+    <p class="muted">Loading EDA...</p>
+}
+else if (_eda is null || _summary is null)
+{
+    <div class="alert alert-warning">EDA not available for this dataset.</div>
+}
+else
+{
+    <div class="grid grid-2">
+        <div class="card"><h3>Duplicate Rows</h3><p class="lead">@_eda.DuplicateRows (@_eda.DuplicatePercentage.ToString("0.##")%)</p></div>
+        <div class="card"><h3>Memory Usage</h3><p class="lead">@_eda.MemoryUsageMb.ToString("0.00") MB</p></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:16px;">
+        <div class="card"><h3>Correlation Heatmap</h3><div id="eda-corr" style="height:360px;"></div></div>
+        <div class="card"><h3>Class Distribution</h3><div id="eda-class" style="height:360px;"></div></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:16px;">
+        <div class="card"><h3>Missing Values (%)</h3><div id="eda-missing" style="height:380px;"></div></div>
+        <div class="card"><h3>Outliers by Column (%)</h3><div id="eda-outliers" style="height:380px;"></div></div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    private TrainWise.Web.Models.EdaReport? _eda;
+    private TrainWise.Web.Models.DatasetSummary? _summary;
+    private bool _loading = true;
+    private bool _chartsRendered;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Guid.TryParse(Id, out var datasetId)) { _loading = false; return; }
+        _summary = await DatasetApi.GetSummaryAsync(datasetId);
+        var target = _summary?.Columns.LastOrDefault();
+        _eda = await DatasetApi.GetEdaAsync(datasetId, target);
+        _loading = false;
+        _chartsRendered = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_chartsRendered || _eda is null || _summary is null) return;
+
+        await JS.InvokeVoidAsync("PlotlyInterop.renderCorrelationHeatmap", "eda-corr", _summary.CorrelationMatrix, _summary.Columns);
+
+        var classDist = _eda.TargetDistribution ?? _summary.ClassDistribution;
+        if (classDist is not null && classDist.Count > 0)
+        {
+            await JS.InvokeVoidAsync("PlotlyInterop.renderClassDistribution", "eda-class", classDist.Keys.ToList(), classDist.Values.ToList());
+        }
+
+        var missingLabels = _summary.MissingValues.Keys.ToList();
+        var missingVals = _summary.MissingValues.Values.Select(v => v.Percentage).ToList();
+        await JS.InvokeVoidAsync("PlotlyInterop.renderSimpleBar", "eda-missing", missingLabels, missingVals, "Missing Value Percentage");
+
+        var outlierLabels = _eda.OutliersByColumn.Keys.ToList();
+        var outlierVals = _eda.OutliersByColumn.Values.Select(v => v.Percentage).ToList();
+        await JS.InvokeVoidAsync("PlotlyInterop.renderHorizontalBar", "eda-outliers", outlierLabels, outlierVals, "Outlier Percentage");
+        _chartsRendered = true;
+    }
+}

@@ -27,9 +27,9 @@ public sealed class SessionState
     {
         try
         {
-            await js.InvokeVoidAsync("localStorage.setItem", StorageKeyToken, SessionToken ?? "");
-            await js.InvokeVoidAsync("localStorage.setItem", StorageKeyUserId, UserId?.ToString() ?? "");
-            await js.InvokeVoidAsync("localStorage.setItem", StorageKeyUsername, Username ?? "");
+            await js.InvokeVoidAsync("sessionStorage.setItem", StorageKeyToken, SessionToken ?? "");
+            await js.InvokeVoidAsync("sessionStorage.setItem", StorageKeyUserId, UserId?.ToString() ?? "");
+            await js.InvokeVoidAsync("sessionStorage.setItem", StorageKeyUsername, Username ?? "");
         }
         catch
         {
@@ -41,9 +41,9 @@ public sealed class SessionState
     {
         try
         {
-            var token = await js.InvokeAsync<string?>("localStorage.getItem", StorageKeyToken);
-            var userIdStr = await js.InvokeAsync<string?>("localStorage.getItem", StorageKeyUserId);
-            var username = await js.InvokeAsync<string?>("localStorage.getItem", StorageKeyUsername);
+            var token = await js.InvokeAsync<string?>("sessionStorage.getItem", StorageKeyToken);
+            var userIdStr = await js.InvokeAsync<string?>("sessionStorage.getItem", StorageKeyUserId);
+            var username = await js.InvokeAsync<string?>("sessionStorage.getItem", StorageKeyUsername);
 
             if (!string.IsNullOrWhiteSpace(token))
             {
@@ -67,9 +67,9 @@ public sealed class SessionState
     {
         try
         {
-            await js.InvokeVoidAsync("localStorage.removeItem", StorageKeyToken);
-            await js.InvokeVoidAsync("localStorage.removeItem", StorageKeyUserId);
-            await js.InvokeVoidAsync("localStorage.removeItem", StorageKeyUsername);
+            await js.InvokeVoidAsync("sessionStorage.removeItem", StorageKeyToken);
+            await js.InvokeVoidAsync("sessionStorage.removeItem", StorageKeyUserId);
+            await js.InvokeVoidAsync("sessionStorage.removeItem", StorageKeyUsername);
         }
         catch
         {
