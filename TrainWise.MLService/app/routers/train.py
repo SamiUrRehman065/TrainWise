@@ -5,7 +5,9 @@ from app.models.dataset_summary import DatasetSummary
 from app.models.train_request import TrainRequest
 from app.models.train_result import TrainResult
 from app.models.recommendation import Recommendation
+from app.models.eda_report import EdaReport
 from app.services.analyzer import analyze_dataset
+from app.services.analyzer import generate_eda_report
 from app.services.trainer import train_model
 from app.services.recommendation_engine import RecommendationEngine
 
@@ -19,6 +21,10 @@ class RecommendRequest(BaseModel):
     metrics: dict[str, Any]
     config: dict[str, Any]
     analysis: dict[str, Any] | None = None
+
+class EdaRequest(BaseModel):
+    datasetId: str
+    targetColumn: str | None = None
 
 @router.post("/analyze", response_model=DatasetSummary)
 async def analyze(request: AnalyzeRequest) -> DatasetSummary:
@@ -55,3 +61,10 @@ async def health_check() -> dict:
     Returns status ok when healthy.
     """
     return {"status": "ok"}
+
+@router.post("/eda", response_model=EdaReport)
+async def eda(request: EdaRequest) -> EdaReport:
+    """
+    Generate deeper EDA insights for the selected dataset.
+    """
+    return generate_eda_report(request.datasetId, request.targetColumn)

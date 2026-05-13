@@ -8,6 +8,7 @@ import pandas as pd
 from pandas.api.types import is_bool_dtype, is_datetime64_any_dtype, is_numeric_dtype
 
 from app.models.dataset_summary import DatasetSummary, MissingValueInfo, SummaryStats
+from app.models.eda_report import EdaReport, OutlierInfo, FeatureCorrelation
 
 _DATASET_PATHS: Dict[str, str] = {}
 
@@ -108,6 +109,63 @@ def analyze_dataset(file_path: str, dataset_id: str) -> DatasetSummary:
         classDistribution=class_distribution,
         correlationMatrix=correlation_matrix,
         imbalanceRatio=imbalance_ratio,
+    )
+
+
+def generate_eda_report(dataset_id: str, target_column: Optional[str] = None) -> EdaReport:
+    file_path = get_dataset_path(dataset_id)
+    if not file_path:
+        raise ValueError("Dataset path not found. Re-run analyze for this dataset.")
+
+    df = load_dataframe(file_path)
+    numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_columns = [c for c in df.columns if c not in numeric_columns]
+
+    duplicate_rows = int(df.duplicated().sum())
+    duplicate_percentage = round((duplicate_rows / len(df) * 100), 4) if len(df) else 0.0
+    memory_usage_mb = round(float(df.memory_usage(deep=True).sum() / (1024 * 1024)), 4)
+
+    outliers_by_column: Dict[str, OutlierInfo] = {}
+    for col in numeric_columns:
+        series = df[col].dropna()
+        if series.empty:
+            outliers_by_column[col] = OutlierInfo(count=0, percentage=0.0)
+            continue
+        q1 = series.quantile(0.25)
+        q3 = series.quantile(0.75)
+        iqr = q3 - q1
+        lower = q1 - 1.5 * iqr
+        upper = q3 + 1.5 * iqr
+        count = int(((series < lower) | (series > upper)).sum())
+        pct = round((count / len(series) * 100), 4) if len(series) else 0.0
+        outliers_by_column[col] = OutlierInfo(count=count, percentage=pct)
+
+    target_distribution = None
+    top_target_correlations: List[FeatureCorrelation] = []
+    if target_column and target_column in df.columns:
+        target_series = df[target_column]
+        if not is_numeric_dtype(target_series):
+            counts = target_series.astype(str).value_counts(dropna=False).head(20)
+            target_distribution = {str(k): int(v) for k, v in counts.to_dict().items()}
+        elif target_column in numeric_columns:
+            corr = df[numeric_columns].corr(method="pearson")[target_column].dropna().drop(labels=[target_column], errors="ignore")
+            top_corr = corr.abs().sort_values(ascending=False).head(10)
+            for feature in top_corr.index:
+                top_target_correlations.append(
+                    FeatureCorrelation(feature=str(feature), correlation=round(float(corr[feature]), 4))
+                )
+
+    return EdaReport(
+        datasetId=dataset_id,
+        targetColumn=target_column,
+        numericColumns=[str(c) for c in numeric_columns],
+        categoricalColumns=[str(c) for c in categorical_columns],
+        duplicateRows=duplicate_rows,
+        duplicatePercentage=duplicate_percentage,
+        memoryUsageMb=memory_usage_mb,
+        outliersByColumn=outliers_by_column,
+        topTargetCorrelations=top_target_correlations,
+        targetDistribution=target_distribution
     )
 
 
