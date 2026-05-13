@@ -1,0 +1,11 @@
+@page "/datasets/{DatasetId:guid}/summary"
+@inject NavigationManager NavManager
+
+@code {
+    [Parameter] public Guid DatasetId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        NavManager.NavigateTo($"/datasets/{DatasetId}", replace: true);
+    }
+}

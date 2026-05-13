@@ -1,0 +1,112 @@
+@page "/training/configure"
+
+<div class="page-header">
+    <h1>Preprocessing configuration</h1>
+    <p class="page-desc">Set default preprocessing options for training jobs.</p>
+</div>
+
+<div class="config-card">
+    <div class="config-grid">
+        <div class="form-group">
+            <label>Null strategy</label>
+            <select>
+                <option value="drop">Drop</option>
+                <option value="mean">Mean</option>
+                <option value="median">Median</option>
+                <option value="mode">Mode</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Encoding</label>
+            <select>
+                <option value="onehot">One-hot</option>
+                <option value="label">Label</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Scaling</label>
+            <select>
+                <option value="standard">Standard</option>
+                <option value="minmax">MinMax</option>
+                <option value="none">None</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<style>
+    .page-header {
+        margin-bottom: var(--space-6);
+    }
+
+    .page-header h1 {
+        font-family: var(--font-ui);
+        font-size: 1.75rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-1);
+        color: var(--color-text);
+    }
+
+    .page-desc {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .config-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-6);
+        max-width: 640px;
+    }
+
+    .config-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-5);
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: var(--space-2);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--color-text-secondary);
+    }
+
+    .form-group select {
+        width: 100%;
+        padding: var(--space-2) 0;
+        border: none;
+        border-bottom: 1px solid var(--color-border);
+        background: transparent;
+        font-family: var(--font-ui);
+        font-size: 0.9375rem;
+        color: var(--color-text);
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        border-radius: 0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23707060' stroke-width='1.5'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0 center;
+        padding-right: var(--space-5);
+    }
+
+    .form-group select:focus {
+        border-bottom-color: var(--color-accent);
+        border-bottom-width: 2px;
+    }
+
+    @@media (max-width: 720px) {
+        .config-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

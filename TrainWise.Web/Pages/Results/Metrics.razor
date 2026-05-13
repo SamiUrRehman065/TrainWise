@@ -1,0 +1,318 @@
+@page "/results/{ExperimentId:guid}"
+@inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
+@inject TrainWise.Web.Services.State.SessionState SessionState
+@inject NavigationManager NavManager
+@inject ILogger<Metrics> Logger
+@using TrainWise.Web.Components.Common
+@using TrainWise.Web.Components.Charts
+
+
+@if (!SessionState.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        <p>Please <a href="/login">sign in</a> to view metrics.</p>
+    </div>
+}
+else if (_isLoading)
+{
+    <div class="state-card">
+        <div class="loading-spinner"></div>
+        <p class="state-text">Loading metrics…</p>
+    </div>
+}
+else if (_experiment is null)
+{
+    <div class="state-card empty">
+        <h3>Experiment not found</h3>
+        <p class="state-text">The experiment you're looking for doesn't exist.</p>
+        <a href="/experiments" class="button primary">Back to history</a>
+    </div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1>Metrics: @_experiment.ModelName</h1>
+            <p class="page-desc">Performance metrics for @_experiment.TaskType experiment.</p>
+        </div>
+        <div class="page-actions">
+            <a href="@($"/experiments/{ExperimentId}")" class="button ghost">View details</a>
+        </div>
+    </div>
+
+    @if (_experiment.Metrics is not null)
+    {
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-label">Accuracy</span>
+                <span class="metric-value">@(_experiment.Metrics.Accuracy.ToString("0.00%"))</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Precision</span>
+                <span class="metric-value">@(_experiment.Metrics.Precision.ToString("0.00"))</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Recall</span>
+                <span class="metric-value">@(_experiment.Metrics.Recall.ToString("0.00"))</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">F1 score</span>
+                <span class="metric-value">@(_experiment.Metrics.F1Score.ToString("0.00"))</span>
+            </div>
+        </div>
+
+        <div class="detail-layout">
+            @if (_experiment.Metrics.ConfusionMatrix is not null)
+            {
+                <div class="detail-card">
+                    <h3>Confusion matrix</h3>
+                    <ConfusionMatrix Data="@_experiment.Metrics.ConfusionMatrix" />
+                </div>
+            }
+
+            @if (_experiment.Metrics.ClassificationReport is not null)
+            {
+                <div class="detail-card">
+                    <h3>Classification report</h3>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Precision</th>
+                                    <th>Recall</th>
+                                    <th>F1-score</th>
+                                    <th>Support</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in _experiment.Metrics.ClassificationReport)
+                                {
+                                    <tr>
+                                        <td><strong>@entry.Key</strong></td>
+                                        <td>@(entry.Value?.Precision.ToString("0.00") ?? "-")</td>
+                                        <td>@(entry.Value?.Recall.ToString("0.00") ?? "-")</td>
+                                        <td>@(entry.Value?.F1Score.ToString("0.00") ?? "-")</td>
+                                        <td>@(entry.Value?.Support)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="state-card empty">
+            <h3>No metrics available</h3>
+            <p class="state-text">Metrics data is not available for this experiment yet.</p>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid ExperimentId { get; set; }
+
+    private ExperimentDetail? _experiment;
+    private bool _isLoading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem { Label = "History", Url = "/experiments" },
+        new BreadcrumbItem { Label = "Metrics" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await LoadMetrics();
+    }
+
+    private async Task LoadMetrics()
+    {
+        try
+        {
+            _experiment = await ExperimentApi.GetAsync(ExperimentId);
+            if (_experiment is not null)
+            {
+                _breadcrumbs = new()
+                {
+                    new BreadcrumbItem { Label = "History", Url = "/experiments" },
+                    new BreadcrumbItem { Label = _experiment.ModelName, Url = $"/experiments/{ExperimentId}" },
+                    new BreadcrumbItem { Label = "Metrics" }
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // Experiment not found — _experiment stays null
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
+
+<style>
+    .page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--space-5);
+        margin-bottom: var(--space-6);
+        flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+        font-family: var(--font-ui);
+        font-size: 1.75rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-1);
+        color: var(--color-text);
+    }
+
+    .page-desc {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .page-actions {
+        flex-shrink: 0;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+    }
+
+    .metric-card {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-5);
+    }
+
+    .metric-label {
+        font-size: 0.8125rem;
+        color: var(--color-text);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+    }
+
+    .metric-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--color-accent);
+        font-family: var(--font-mono);
+    }
+
+    .detail-layout {
+        display: grid;
+        gap: var(--space-5);
+    }
+
+    .detail-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-5);
+    }
+
+    .detail-card h3 {
+        font-family: var(--font-ui);
+        font-size: 1.125rem;
+        font-weight: 700;
+        margin: 0 0 var(--space-4);
+        color: var(--color-text);
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .data-table th {
+        padding: var(--space-3) var(--space-4);
+        text-align: left;
+        font-weight: 700;
+        border-bottom: 2px solid var(--color-border);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-size: 0.8125rem;
+        color: var(--color-text);
+    }
+
+    .data-table td {
+        padding: var(--space-2) var(--space-4);
+        border-bottom: 1px solid var(--color-border);
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+
+    .data-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .alert {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.875rem;
+        border: 1px solid var(--color-border);
+    }
+
+    .alert p {
+        margin: 0;
+    }
+
+    .alert a {
+        color: var(--color-accent);
+        text-decoration: underline;
+    }
+
+    .alert-warning {
+        background: var(--color-bg);
+        color: var(--color-text);
+    }
+
+    .state-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-7) var(--space-5);
+        text-align: center;
+    }
+
+    .state-card.empty h3 {
+        font-family: var(--font-ui);
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0 0 var(--space-2);
+        color: var(--color-text);
+    }
+
+    .state-text {
+        margin: 0;
+        color: var(--color-text);
+        font-size: 0.9375rem;
+    }
+
+    .state-card .button {
+        margin-top: var(--space-4);
+    }
+
+    @@media (max-width: 720px) {
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>

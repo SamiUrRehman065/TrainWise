@@ -1,0 +1,76 @@
+@inherits LayoutComponentBase
+@using TrainWise.Web.Components.Navigation
+@inject IJSRuntime JSRuntime
+@inject TrainWise.Web.Services.State.SessionState SessionState
+
+@if (_isSessionReady)
+{
+    <TrainWise.Web.Components.Navigation.TopNav />
+
+    <main>
+        <div class="page">
+            @Body
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 TrainWise &mdash; ML training platform</p>
+    </footer>
+}
+else
+{
+    <div class="app-loading-shell">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Restoring your session…</p>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isSessionReady;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SessionState.RestoreFromStorageAsync(JSRuntime);
+            await JSRuntime.InvokeVoidAsync("import", "./js/export.js");
+            _isSessionReady = true;
+            StateHasChanged();
+        }
+    }
+}
+
+<style>
+    .app-loading-shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: var(--space-6);
+    }
+
+    .loading-card {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-5) var(--space-6);
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        color: var(--color-text-secondary);
+    }
+
+    .loading-text {
+        margin: 0;
+    }
+
+    .site-footer {
+        max-width: var(--content-max);
+        margin: var(--space-7) auto 0;
+        padding: var(--space-5) var(--space-5);
+        border-top: 1px solid var(--color-border);
+        color: var(--color-text-secondary);
+        font-size: 13px;
+        text-align: center;
+    }
+</style>

@@ -1,0 +1,102 @@
+@page "/metrics"
+@inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
+@inject TrainWise.Web.Services.State.SessionState SessionState
+
+<div class="page-header">
+    <h1>Metrics</h1>
+    <p class="page-desc">Choose an experiment to view detailed metrics.</p>
+</div>
+
+@if (!SessionState.IsAuthenticated)
+{
+    <div class="state-card">
+        <div class="state-text">Please <a href="/login">sign in</a> to view metrics.</div>
+    </div>
+}
+else if (_isLoading)
+{
+    <div class="state-card">
+        <div class="loading-spinner"></div>
+        <p class="state-text">Loading experiments...</p>
+    </div>
+}
+else if (_history is null || _history.TrainingHistory.Count == 0)
+{
+    <div class="state-card empty">
+        <h3>No experiments yet</h3>
+        <p class="state-text">Run a training job first to view metrics.</p>
+        <a href="/training" class="button primary">Start training</a>
+    </div>
+}
+else
+{
+    <div class="metrics-list">
+        @foreach (var item in _history.TrainingHistory.OrderByDescending(x => x.CreatedAt))
+        {
+            <div class="metrics-item">
+                <div>
+                    <h4>@item.ModelName</h4>
+                    <p class="meta">
+                        @item.TaskType
+                        @if (!string.IsNullOrWhiteSpace(item.DatasetName))
+                        {
+                            <span> · @item.DatasetName</span>
+                        }
+                        <span> · @item.CreatedAt.ToString("MMM dd, yyyy")</span>
+                    </p>
+                </div>
+                <a class="button ghost" href="@($"/results/{item.ExperimentId}")">View metrics</a>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private TrainWise.Web.Models.TrainingHistoryResponse? _history;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _history = await ExperimentApi.GetTrainingHistoryAsync();
+        _isLoading = false;
+    }
+}
+
+<style>
+    .page-header {
+        margin-bottom: var(--space-6);
+    }
+
+    .metrics-list {
+        display: grid;
+        gap: var(--space-4);
+    }
+
+    .metrics-item {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-4);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-4);
+    }
+
+    .metrics-item h4 {
+        margin: 0 0 var(--space-1);
+        font-size: 1rem;
+    }
+
+    .meta {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.875rem;
+    }
+
+    @@media (max-width: 720px) {
+        .metrics-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>

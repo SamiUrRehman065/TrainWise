@@ -1,0 +1,358 @@
+@page "/"
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<PageTitle>TrainWise — ML Training Platform</PageTitle>
+
+<style>
+  /* Homepage-specific utility classes (scoped to this component only) */
+  .hp-mono { font-family: var(--mono, 'JetBrains Mono', monospace); }
+  .hp-tag { font-family: var(--mono, 'JetBrains Mono', monospace); font-size: 11px; font-weight: 500; color: var(--acc); letter-spacing: .08em; text-transform: uppercase; border: 1px solid rgba(200,255,0,.22); padding: 3px 8px; display: inline-block; }
+  .hp-sh { font-size: 34px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; position: relative; z-index: 1; }
+  .hp-btn-p { background: var(--acc); color: #080A0C; border: none; padding: 11px 22px; font-family: var(--sans, 'Syne', sans-serif); font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: .02em; transition: opacity .15s; }
+  .hp-btn-p:hover { opacity: .85; }
+  .hp-btn-g { background: transparent; color: var(--txt); border: 1px solid var(--brd); padding: 11px 22px; font-family: var(--sans, 'Syne', sans-serif); font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color .15s; }
+  .hp-btn-g:hover { border-color: rgba(200,255,0,.35); }
+  .hp-mc { border: 1px solid var(--brd); padding: 20px; background: var(--bg); transition: border-color .15s; }
+  .hp-mc:hover { border-color: rgba(200,255,0,.28); }
+  .hp-step-li { padding: 16px 20px; border-left: 2px solid var(--brd); cursor: pointer; transition: border-color .2s, background .2s; }
+  .hp-step-li.act { border-left-color: var(--acc); background: rgba(200,255,0,.03); }
+  .hp-rule-row { border-bottom: 1px solid var(--brd); padding: 13px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; transition: background .12s; }
+  .hp-rule-row:hover { background: rgba(255,255,255,.02); }
+  .hp-feat-row { border-top: 1px solid var(--brd); padding: 28px 0; display: grid; grid-template-columns: 170px 1fr 190px; gap: 36px; align-items: start; }
+  .hp-tick-wrap { overflow: hidden; border-top: 1px solid var(--brd); border-bottom: 1px solid var(--brd); }
+  .hp-tick-inner { display: flex; animation: hp-tick 35s linear infinite; white-space: nowrap; }
+  @@keyframes hp-tick { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+  .hp-tick-item { padding: 11px 28px; font-family: var(--mono, 'JetBrains Mono', monospace); font-size: 11px; color: var(--mut); border-right: 1px solid var(--brd); letter-spacing: .05em; flex-shrink: 0; }
+  .hp-tick-item b { color: var(--acc); margin-right: 7px; font-weight: 400; }
+  .hp-rf { transition: opacity .28s; }
+  .hp-rf.h { opacity: 0; }
+  .hp-rf.v { opacity: 1; }
+  @@media (max-width: 860px) {
+    .hp-feat-row { grid-template-columns: 1fr; }
+    .hp-rule-row { grid-template-columns: 56px 1fr; }
+    .hp-ra { display: none; }
+    .hp-hg { grid-template-columns: 1fr !important; }
+  }
+  /* Remove default main padding on homepage for full-width sections */
+  .homepage-wrapper { width: 100%; }
+  .homepage-wrapper > section { width: 100%; }
+</style>
+
+<div class="homepage-wrapper">
+
+<!-- HERO -->
+<section style="padding:88px 24px 72px;max-width:1320px;margin:0 auto;">
+  <div style="display:grid;grid-template-columns:1fr 400px;gap:72px;align-items:center;" class="hp-hg">
+    <div>
+      <div class="hp-tag" style="margin-bottom:22px;">Semester Project · Muhammad Ali Jinnah University · CS Spring 2026</div>
+      <h1 style="font-size:clamp(40px,5.2vw,68px);font-weight:800;letter-spacing:-.03em;line-height:1.0;margin-bottom:22px;">
+        Machine Learning,<br>
+        <span style="color:var(--acc);">Without the</span><br>
+        Guesswork.
+      </h1>
+      <p style="font-size:17px;line-height:1.7;color:var(--txt);max-width:460px;margin-bottom:36px;">
+        Upload a CSV. Get instant dataset analysis. Configure a preprocessing pipeline. Train seven models. Receive deterministic improvement recommendations. All from a browser. All on your machine.
+      </p>
+      <div style="display:flex;gap:10px;margin-bottom:48px;">
+        <button class="hp-btn-p">Start Training</button>
+        <button class="hp-btn-g">Read the SRS</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--brd);">
+        <div style="background:var(--bg);padding:18px 20px;"><div class="hp-mono" style="font-size:26px;font-weight:500;color:var(--txt);">7</div><div style="font-size:11px;color:var(--mut);margin-top:4px;letter-spacing:.04em;">ML Models</div></div>
+        <div style="background:var(--bg);padding:18px 20px;"><div class="hp-mono" style="font-size:26px;font-weight:500;color:var(--txt);">8</div><div style="font-size:11px;color:var(--mut);margin-top:4px;letter-spacing:.04em;">Auto-Rules</div></div>
+        <div style="background:var(--bg);padding:18px 20px;"><div class="hp-mono" style="font-size:26px;font-weight:500;color:var(--txt);">@("<60s")</div><div style="font-size:11px;color:var(--mut);margin-top:4px;letter-spacing:.04em;">Train Time</div></div>
+        <div style="background:var(--bg);padding:18px 20px;"><div class="hp-mono" style="font-size:26px;font-weight:500;color:var(--txt);">9</div><div style="font-size:11px;color:var(--mut);margin-top:4px;letter-spacing:.04em;">Functional Req.</div></div>
+        <div style="background:var(--bg);padding:18px 20px;"><div class="hp-mono" style="font-size:26px;font-weight:500;color:var(--txt);">5</div><div style="font-size:11px;color:var(--mut);margin-top:4px;letter-spacing:.04em;">Chart Types</div></div>
+        <div style="background:var(--bg);padding:18px 20px;"><div class="hp-mono" style="font-size:26px;font-weight:500;color:var(--txt);">100k</div><div style="font-size:11px;color:var(--mut);margin-top:4px;letter-spacing:.04em;">Max Rows</div></div>
+      </div>
+    </div>
+    <!-- Pipeline card -->
+    <div style="background:var(--surf);border:1px solid var(--brd);padding:28px;">
+      <div class="hp-mono" style="font-size:10px;color:var(--mut);letter-spacing:.1em;margin-bottom:20px;text-transform:uppercase;">Pipeline Status</div>
+      <div id="pipeline" style="display:flex;flex-direction:column;gap:2px;">
+        @foreach (var (i, step) in _steps.Select((s, idx) => (idx, s)))
+        {
+          <div class="hp-step-li @(_activeStep == i ? "act" : "")" @onclick="() => SetActiveStep(i)" style="@(_activeStep == i ? "border-left-color:var(--acc);background:rgba(200,255,0,.03);" : "")">
+            <div style="display:flex;justify-content:space-between;align-items:center;@(_activeStep == i ? "margin-bottom:8px;" : "")">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span class="hp-mono" style="font-size:11px;color:@(_activeStep == i ? "var(--acc)" : "var(--mut)");"> @step.Id</span>
+                <span style="font-size:14px;font-weight:600;color:@(_activeStep == i ? "var(--txt)" : "var(--mut)");"> @step.Title</span>
+              </div>
+              @if (_activeStep == i) {
+                <div style="width:6px;height:6px;background:var(--acc);border-radius:50%;flex-shrink:0;"></div>
+              }
+            </div>
+            @if (_activeStep == i) {
+              <div style="font-size:12px;color:var(--txt);line-height:1.6;padding-left:26px;">@step.Desc</div>
+            }
+          </div>
+        }
+      </div>
+      <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center;">
+        <span class="hp-mono" style="font-size:10px;color:var(--mut);">@_steps[_activeStep].Tag</span>
+        <div style="display:flex;gap:3px;">
+          @foreach (var (i, _) in _steps.Select((s, idx) => (idx, s)))
+          {
+            <div style="width:@(_activeStep == i ? 18 : 4)px;height:4px;background:@(_activeStep == i ? "var(--acc)" : "var(--brd)");transition:width .3s,background .3s;"></div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="hp-tick-wrap">
+  <div class="hp-tick-inner" id="ticker">
+    @foreach (var item in _tickerItems)
+    {
+      <div class="hp-tick-item"><b>→</b>@item</div>
+    }
+    @foreach (var item in _tickerItems)
+    {
+      <div class="hp-tick-item"><b>→</b>@item</div>
+    }
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how" style="padding:88px 24px;max-width:1320px;margin:0 auto;">
+  <div style="position:relative;margin-bottom:52px;">
+    <div class="hp-tag" style="margin-bottom:14px;position:relative;z-index:1;">How It Works</div>
+    <h2 class="hp-sh">Five steps.<br>Zero infrastructure.</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--brd);">
+    @foreach (var step in _steps)
+    {
+      <div style="background:var(--bg);padding:28px 20px;">
+        <div class="hp-mono" style="font-size:38px;font-weight:500;color:#2A3A4E;line-height:1;margin-bottom:14px;">@step.Id</div>
+        <div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:10px;">@step.Title</div>
+        <div style="font-size:12px;color:var(--mut);line-height:1.65;">@step.Desc</div>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="padding:60px 24px;max-width:1320px;margin:0 auto;">
+  <div style="position:relative;margin-bottom:52px;">
+    <div class="hp-tag" style="margin-bottom:14px;position:relative;z-index:1;">Capabilities</div>
+    <h2 class="hp-sh">Everything you need<br>from upload to insight.</h2>
+  </div>
+  @foreach (var feature in _features)
+  {
+    <div class="hp-feat-row">
+      <div>
+        <div style="font-size:19px;font-weight:700;margin-top:10px;letter-spacing:-.015em;">@feature.Title</div>
+      </div>
+      <div style="font-size:14px;color:var(--txt);line-height:1.8;">@feature.Desc</div>
+      <div>
+        @foreach (var item in feature.Items)
+        {
+          <div style="font-size:12px;color:var(--mut);padding:7px 0;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:7px;">
+            <span style="color:var(--acc);font-size:9px;">✓</span>@item
+          </div>
+        }
+      </div>
+    </div>
+  }
+</section>
+
+<!-- RECOMMENDATION ENGINE -->
+<section style="padding:80px 24px;background:var(--surf);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);">
+  <div style="max-width:1320px;margin:0 auto;">
+    <div style="display:grid;grid-template-columns:260px 1fr;gap:72px;" class="hp-hg">
+      <div>
+        <div style="position:relative;">
+          <h2 style="font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin-bottom:14px;position:relative;z-index:1;">Recommendation<br>Engine</h2>
+        </div>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:28px;">Eight deterministic IF/THEN rules fire after every run. Each checks a specific condition — not vibes, not ML magic — and surfaces a precise, actionable suggestion.</p>
+        <div style="background:var(--bg);border:1px solid var(--brd);padding:18px;">
+          <div class="hp-mono" style="font-size:9px;color:var(--acc);margin-bottom:7px;letter-spacing:.1em;text-transform:uppercase;">Live Example</div>
+          @if (_currentRule is not null)
+          {
+            <div class="hp-rf v">
+              <div class="hp-mono" style="font-size:9px;color:var(--acc);margin-bottom:7px;letter-spacing:.08em;">TRIGGERED</div>
+              <div style="font-size:11px;color:var(--txt);margin-bottom:7px;font-family:var(--mono);">@_currentRule.Trigger</div>
+              <div style="font-size:12px;color:var(--txt);line-height:1.6;">"@_currentRule.Action"</div>
+            </div>
+          }
+        </div>
+      </div>
+      <div>
+        <div style="border-top:1px solid var(--brd);">
+          @foreach (var rule in _rules)
+          {
+            <div class="hp-rule-row">
+              <div><div class="hp-mono" style="font-size:10px;color:var(--mut);margin-bottom:4px;letter-spacing:.06em;">IF</div><div style="font-size:13px;color:var(--txt);">@rule.Trigger</div></div>
+              <div class="hp-ra"><div class="hp-mono" style="font-size:10px;color:var(--mut);margin-bottom:4px;letter-spacing:.06em;">THEN</div><div style="font-size:13px;color:var(--txt);">@rule.Action</div></div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODELS -->
+<section id="models" style="padding:88px 24px;max-width:1320px;margin:0 auto;">
+  <div style="position:relative;margin-bottom:52px;">
+    <div class="hp-tag" style="margin-bottom:14px;position:relative;z-index:1;">Model Arsenal</div>
+    <h2 class="hp-sh">Seven models.<br>Classification + Regression.</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--brd);">
+    @foreach (var model in _models)
+    {
+      <div class="hp-mc">
+        <div style="display:inline-block;font-size:9px;font-family:var(--mono);color:@(model.Type == "Classification" ? "var(--acc)" : "#4FC3F7");border:1px solid @(model.Type == "Classification" ? "rgba(200,255,0,.2)" : "rgba(79,195,247,.2)");padding:2px 7px;margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase;">@model.Type</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px;letter-spacing:-.01em;">@model.Name</div>
+        <div style="font-size:11px;color:var(--mut);font-family:var(--mono);">params: <span style="color:var(--mut);">@model.Params</span></div>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section id="stack" style="padding:80px 24px;background:var(--surf);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);">
+  <div style="max-width:1320px;margin:0 auto;">
+    <div style="position:relative;margin-bottom:52px;">
+      <div class="hp-tag" style="margin-bottom:14px;position:relative;z-index:1;">Architecture</div>
+      <h2 class="hp-sh">Three tiers.<br>One local machine.</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--brd);">
+      <div style="background:var(--bg);padding:28px 22px;"><div class="hp-mono" style="font-size:9px;color:var(--mut);letter-spacing:.1em;margin-bottom:18px;text-transform:uppercase;">Layer 01</div><div style="font-size:10px;color:var(--acc);font-family:var(--mono);letter-spacing:.06em;margin-bottom:7px;text-transform:uppercase;">Frontend</div><div style="font-size:16px;font-weight:700;margin-bottom:10px;">Blazor WebAssembly</div><div style="font-size:12px;color:var(--mut);line-height:1.65;">C# running in-browser via WASM. Plotly.js charts rendered through JS Interop. Step-by-step wizard UI.</div></div>
+      <div style="background:var(--bg);padding:28px 22px;"><div class="hp-mono" style="font-size:9px;color:var(--mut);letter-spacing:.1em;margin-bottom:18px;text-transform:uppercase;">Layer 02</div><div style="font-size:10px;color:var(--acc);font-family:var(--mono);letter-spacing:.06em;margin-bottom:7px;text-transform:uppercase;">Backend API</div><div style="font-size:16px;font-weight:700;margin-bottom:10px;">ASP.NET Core 8</div><div style="font-size:12px;color:var(--mut);line-height:1.65;">REST API orchestration, file storage, session auth, experiment history persistence via EF Core.</div></div>
+      <div style="background:var(--bg);padding:28px 22px;"><div class="hp-mono" style="font-size:9px;color:var(--mut);letter-spacing:.1em;margin-bottom:18px;text-transform:uppercase;">Layer 03</div><div style="font-size:10px;color:var(--acc);font-family:var(--mono);letter-spacing:.06em;margin-bottom:7px;text-transform:uppercase;">ML Service</div><div style="font-size:16px;font-weight:700;margin-bottom:10px;">Python + FastAPI</div><div style="font-size:12px;color:var(--mut);line-height:1.65;">scikit-learn, pandas, imbalanced-learn. ModelFactory pattern. Pydantic request/response models.</div></div>
+      <div style="background:var(--bg);padding:28px 22px;"><div class="hp-mono" style="font-size:9px;color:var(--mut);letter-spacing:.1em;margin-bottom:18px;text-transform:uppercase;">Layer 04</div><div style="font-size:10px;color:var(--acc);font-family:var(--mono);letter-spacing:.06em;margin-bottom:7px;text-transform:uppercase;">Database</div><div style="font-size:16px;font-weight:700;margin-bottom:10px;">SQL Server 2022</div><div style="font-size:12px;color:var(--mut);line-height:1.65;">Users → Datasets → Experiments. Config + metrics stored as JSON columns for schema flexibility.</div></div>
+    </div>
+    <div style="margin-top:1px;background:var(--brd);">
+      <div style="background:var(--bg);padding:16px 22px;display:flex;gap:24px;flex-wrap:wrap;">
+        <span class="hp-mono" style="font-size:11px;color:var(--mut);">scikit-learn</span>
+        <span class="hp-mono" style="font-size:11px;color:var(--mut);">pandas</span>
+        <span class="hp-mono" style="font-size:11px;color:var(--mut);">numpy</span>
+        <span class="hp-mono" style="font-size:11px;color:var(--mut);">imbalanced-learn</span>
+        <span class="hp-mono" style="font-size:11px;color:var(--mut);">Plotly.js</span>
+        <span class="hp-mono" style="font-size:11px;color:var(--mut);">Entity Framework Core</span>
+        <span class="hp-mono" style="font-size:11px;color:var(--mut);">Pydantic v2</span>
+        <span class="hp-mono" style="font-size:11px;color:var(--mut);">uvicorn</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section style="padding:110px 24px;max-width:1320px;margin:0 auto;text-align:center;">
+  <div class="hp-tag" style="margin-bottom:20px;">Open Source · Local Deployment · No Cloud Required</div>
+  <h2 style="font-size:clamp(34px,4.8vw,60px);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin-bottom:20px;">
+    Your data stays on<br><span style="color:var(--acc);">your machine.</span>
+  </h2>
+  <p style="font-size:16px;color:var(--mut);margin-bottom:44px;max-width:440px;margin-left:auto;margin-right:auto;line-height:1.7;">
+    TrainWise runs entirely on-premises. SQL Server, FastAPI, Blazor — all local. No API keys. No cloud bills. No data leaving your network.
+  </p>
+  <div style="display:flex;gap:10px;justify-content:center;">
+    <button class="hp-btn-p" style="padding:14px 36px;font-size:15px;">Clone the Repo</button>
+    <button class="hp-btn-g" style="padding:14px 36px;font-size:15px;">Read the SRS</button>
+  </div>
+</section>
+
+</div>
+
+@code {
+    private int _activeStep = 0;
+    private int _currentRuleIndex = 0;
+    private System.Timers.Timer? _pipelineTimer;
+    private System.Timers.Timer? _ruleTimer;
+
+    private record Step(string Id, string Title, string Desc, string Tag);
+    private record Feature(string Tag, string Title, string Desc, string[] Items);
+    private record Model(string Name, string Type, string Params);
+    private record Rule(string Id, string Trigger, string Action);
+
+    private Step[] _steps = [
+        new("01", "Upload", "Drop a CSV or XLSX (≤50 MB, ≤100k rows). Format + MIME type validated instantly.", "FR-1: Dataset Upload"),
+        new("02", "Analyze", "Auto-audit fires. Column types, null %, correlation matrix, class imbalance ratio.", "FR-2: Dataset Analysis"),
+        new("03", "Configure", "Null strategy, encoding, StandardScaler / MinMaxScaler, SMOTE, column exclusions.", "FR-3: Preprocessing Options"),
+        new("04", "Train", "Pick from 7 models, set hyperparameters, submit. Metrics return in under 60 seconds.", "FR-4 + FR-5: Train & Evaluate"),
+        new("05", "Review", "Confusion matrix, feature importance, accuracy charts. 8 rules fire. Retrain in one click.", "FR-6 + FR-7: Visualize + Recommend"),
+    ];
+
+    private Feature[] _features = [
+        new("FR-2", "Dataset Intelligence", "Every upload triggers a full automated audit — column type detection (numerical / categorical / datetime), per-column missing value percentages, Pearson correlation matrix, class distribution, and imbalance ratio. All before you touch a setting.",
+            ["Column type detection", "Per-column null % audit", "Pearson correlation matrix", "Class distribution + imbalance ratio", "Summary statistics (mean, median, std, min, max)"]),
+        new("FR-3", "Preprocessing Pipeline", "Build a reproducible preprocessing config without writing a line of code. Every choice persists to the experiment record — null strategy, encoding method, scaler, SMOTE toggle, and column exclusions are all tracked.",
+            ["Drop / Fill mean / median / mode", "One-hot encoding (nominal)", "Label encoding (ordinal)", "StandardScaler & MinMaxScaler", "SMOTE oversampling (imbalance > 1.5:1)"]),
+        new("FR-4", "Model Arsenal", "Seven scikit-learn models across classification and regression. Hyperparameters configurable per model. The ModelFactory pattern (Open/Closed) means adding a new model requires one class and one registration line — no core changes.",
+            ["Logistic Regression (max_iter)", "Random Forest Classifier + Regressor (n_estimators)", "SVM + SVR (C, kernel)", "K-Nearest Neighbours (n_neighbors)", "Linear Regression"]),
+        new("FR-5", "Evaluation Engine", "Every run returns a complete metrics package. Classification gets accuracy, precision, recall, and F1 (all macro-averaged) plus a full confusion matrix. Regression gets R², RMSE, and MAE. Optional 5-fold cross-validation. All persisted.",
+            ["Accuracy / Precision / Recall / F1 (macro)", "Full confusion matrix", "R² / RMSE / MAE for regression", "5-fold cross-validation toggle", "70/25/80 train-test split options"]),
+        new("FR-6", "Visual Analytics", "Five Plotly.js charts rendered inside Blazor via JS Interop. All tied to real experiment data — no static screenshots, no hardcoded SVGs.",
+            ["Accuracy comparison bar chart", "Confusion matrix heatmap", "Feature importance (Random Forest)", "Pairwise correlation heatmap", "Class distribution pie chart"]),
+        new("FR-9", "Experiment History", "Every training run creates a permanent SQL Server record: dataset, model, full preprocessing config, hyperparameters, all metrics, and training duration. Compare any two runs side-by-side. Delete. Revisit months later.",
+            ["Full config + metrics per run", "Side-by-side comparison view", "Training duration tracking", "Dataset foreign key linkage", "Individual run deletion"]),
+    ];
+
+    private Model[] _models = [
+        new("Logistic Regression", "Classification", "max_iter"),
+        new("Random Forest", "Classification", "n_estimators"),
+        new("SVM", "Classification", "C, kernel"),
+        new("KNN", "Classification", "n_neighbors"),
+        new("Linear Regression", "Regression", "—"),
+        new("Random Forest Regressor", "Regression", "n_estimators"),
+        new("SVR", "Regression", "C, kernel"),
+    ];
+
+    private Rule[] _rules = [
+        new("R-01", "Missing values > 20% in any column", "High missing data — consider dropping or using model-based imputation"),
+        new("R-02", "Class imbalance > 2:1, SMOTE disabled", "Imbalance detected — enable SMOTE to improve minority-class recall"),
+        new("R-03", "Accuracy > 98%, cross-validation off", "Near-perfect score — enable 5-fold CV to verify it isn't overfitting"),
+        new("R-04", "F1-Score < 0.60", "Low F1 — try feature scaling, a different SVM kernel, or more data"),
+        new("R-05", "Random Forest, n_estimators < 50", "Low tree count — increase n_estimators to ≥ 100 for stability"),
+        new("R-06", "RMSE > 1 std dev of target column", "High RMSE — consider feature engineering or non-linear models"),
+        new("R-07", "Dataset rows < 500", "Small dataset — results may be unreliable; use cross-validation"),
+        new("R-08", "No scaling applied; model is SVM or KNN", "Scale-sensitive model — apply StandardScaler or MinMaxScaler"),
+    ];
+
+    private string[] _tickerItems = [
+        "Dataset Upload", "Auto-Analysis", "Missing Value Detection", "StandardScaler", "MinMaxScaler",
+        "SMOTE", "One-Hot Encoding", "Label Encoding", "Logistic Regression", "Random Forest",
+        "SVM", "KNN", "Linear Regression", "SVR", "Confusion Matrix",
+        "F1-Score", "R² Score", "RMSE", "MAE", "Feature Importance",
+        "Experiment History", "Plotly.js Charts", "5-Fold CV", "Hyperparameter Config"
+    ];
+
+    private Rule? _currentRule => _rules.Length > _currentRuleIndex ? _rules[_currentRuleIndex] : null;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _pipelineTimer = new System.Timers.Timer(2400);
+        _pipelineTimer.Elapsed += (_, _) =>
+        {
+            _activeStep = (_activeStep + 1) % _steps.Length;
+            InvokeAsync(StateHasChanged);
+        };
+        _pipelineTimer.Start();
+
+        _ruleTimer = new System.Timers.Timer(3200);
+        _ruleTimer.Elapsed += (_, _) =>
+        {
+            _currentRuleIndex = (_currentRuleIndex + 1) % _rules.Length;
+            InvokeAsync(StateHasChanged);
+        };
+        _ruleTimer.Start();
+    }
+
+    private void SetActiveStep(int index)
+    {
+        _activeStep = index;
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        _pipelineTimer?.Dispose();
+        _ruleTimer?.Dispose();
+        await Task.CompletedTask;
+    }
+}

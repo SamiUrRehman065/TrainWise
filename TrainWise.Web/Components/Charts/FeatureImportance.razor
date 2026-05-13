@@ -1,0 +1,57 @@
+@inject IJSRuntime JS
+
+<div class="chart-container">
+    <h4 class="chart-title">Feature Importance</h4>
+    @if (Importances is not null && Importances.Count > 0)
+    {
+        <div id="@_chartId" class="chart-plot"></div>
+    }
+    else
+    {
+        <p class="chart-empty">Feature importance is only available for tree-based models (Random Forest).</p>
+    }
+</div>
+
+@code {
+    [Parameter] public Dictionary<string, double>? Importances { get; set; }
+
+    private string _chartId = $"fi-{Guid.NewGuid():N}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Importances is not null && Importances.Count > 0)
+        {
+            var names = Importances.Keys.ToArray();
+            var values = Importances.Values.ToArray();
+            await JS.InvokeVoidAsync("PlotlyInterop.renderFeatureImportance", _chartId, names, values);
+        }
+    }
+}
+
+<style>
+    .chart-container {
+        background: var(--surf);
+        border: 1px solid var(--brd);
+        padding: var(--space-5);
+    }
+
+    .chart-title {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mut);
+        margin: 0 0 var(--space-3);
+    }
+
+    .chart-plot {
+        width: 100%;
+        min-height: 350px;
+    }
+
+    .chart-empty {
+        color: var(--mut);
+        font-size: 13px;
+        padding: var(--space-4) 0;
+    }
+</style>

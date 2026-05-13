@@ -1,0 +1,43 @@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(TrainWise.Web.Components.Layout.MainLayout)" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(TrainWise.Web.Components.Layout.MainLayout)">
+            <div class="not-found-page">
+                <div class="not-found-code">404</div>
+                <h2 class="not-found-title">Page not found</h2>
+                <p class="not-found-desc">The page you're looking for doesn't exist or has been moved.</p>
+                <a href="/" class="button primary">Go to homepage</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+<style>
+    .not-found-page {
+        text-align: center;
+        padding: var(--space-8) var(--space-5);
+    }
+
+    .not-found-code {
+        font-family: var(--mono);
+        font-size: 96px;
+        font-weight: 700;
+        color: var(--acc);
+        line-height: 1;
+        margin-bottom: var(--space-3);
+        opacity: 0.6;
+    }
+
+    .not-found-title {
+        font-size: 24px;
+        margin-bottom: var(--space-2);
+    }
+
+    .not-found-desc {
+        color: var(--mut);
+        font-size: 15px;
+        margin-bottom: var(--space-6);
+    }
+</style>

@@ -1,0 +1,45 @@
+@inject IJSRuntime JS
+
+<div class="chart-container">
+    <h4 class="chart-title">Regression Metrics</h4>
+    <div id="@_chartId" class="chart-plot"></div>
+</div>
+
+@code {
+    [Parameter] public double R2Score { get; set; }
+    [Parameter] public double Rmse { get; set; }
+    [Parameter] public double Mae { get; set; }
+
+    private string _chartId = $"reg-metrics-{Guid.NewGuid():N}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var metrics = new { r2Score = R2Score, rmse = Rmse, mae = Mae };
+            await JS.InvokeVoidAsync("PlotlyInterop.renderRegressionMetrics", _chartId, metrics);
+        }
+    }
+}
+
+<style>
+    .chart-container {
+        background: var(--surf);
+        border: 1px solid var(--brd);
+        padding: var(--space-5);
+    }
+
+    .chart-title {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mut);
+        margin: 0 0 var(--space-3);
+    }
+
+    .chart-plot {
+        width: 100%;
+        min-height: 300px;
+    }
+</style>

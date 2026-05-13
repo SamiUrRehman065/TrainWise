@@ -1,0 +1,56 @@
+@inject IJSRuntime JS
+
+<div class="chart-container">
+    <h4 class="chart-title">Class Distribution</h4>
+    @if (Labels is not null && Labels.Count > 0)
+    {
+        <div id="@_chartId" class="chart-plot"></div>
+    }
+    else
+    {
+        <p class="chart-empty">Class distribution data not available.</p>
+    }
+</div>
+
+@code {
+    [Parameter] public List<string>? Labels { get; set; }
+    [Parameter] public List<int>? Values { get; set; }
+
+    private string _chartId = $"class-dist-{Guid.NewGuid():N}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Labels is not null && Labels.Count > 0 && Values is not null)
+        {
+            await JS.InvokeVoidAsync("PlotlyInterop.renderClassDistribution", _chartId, Labels, Values);
+        }
+    }
+}
+
+<style>
+    .chart-container {
+        background: var(--surf);
+        border: 1px solid var(--brd);
+        padding: var(--space-5);
+    }
+
+    .chart-title {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mut);
+        margin: 0 0 var(--space-3);
+    }
+
+    .chart-plot {
+        width: 100%;
+        min-height: 350px;
+    }
+
+    .chart-empty {
+        color: var(--mut);
+        font-size: 13px;
+        padding: var(--space-4) 0;
+    }
+</style>

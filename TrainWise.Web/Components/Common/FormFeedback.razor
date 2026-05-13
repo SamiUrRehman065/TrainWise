@@ -1,0 +1,68 @@
+@namespace TrainWise.Web.Components.Common
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="form-feedback @_feedbackClass">
+        <span class="feedback-text">@_message</span>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public FeedbackType Type { get; set; } = FeedbackType.Info;
+
+    [Parameter]
+    public EventCallback OnDismiss { get; set; }
+
+    private string _message = string.Empty;
+    private string _feedbackClass = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _message = Message ?? string.Empty;
+
+        _feedbackClass = Type switch
+        {
+            FeedbackType.Success => "success",
+            FeedbackType.Error => "error",
+            FeedbackType.Warning => "warning",
+            FeedbackType.Info => "info",
+            _ => "info"
+        };
+    }
+}
+
+<style>
+    .form-feedback {
+        padding: var(--space-3) var(--space-4);
+        font-size: 13px;
+        border: 1px solid var(--color-border);
+    }
+
+    .form-feedback.success {
+        border-color: var(--color-success);
+        color: var(--color-success);
+    }
+
+    .form-feedback.error {
+        border-color: var(--color-negative);
+        color: var(--color-negative);
+    }
+
+    .form-feedback.warning {
+        border-color: #D4A017;
+        color: #D4A017;
+    }
+
+    .form-feedback.info {
+        border-color: var(--color-text-secondary);
+        color: var(--color-text-secondary);
+    }
+
+    .feedback-text {
+        flex: 1;
+    }
+</style>

@@ -1,0 +1,118 @@
+@namespace TrainWise.Web.Components.Common
+
+<div class="storage-viz">
+    <div class="storage-header">
+        <h4>Storage Usage</h4>
+        <span class="storage-info">@UsedGB.ToString("0.00") GB / @TotalGB.ToString("0.00") GB</span>
+    </div>
+
+    <div class="storage-bar">
+        <div class="storage-used" style="width: @($"{(UsedGB/TotalGB)*100}%")">
+            <span class="storage-label">@($"{(UsedGB/TotalGB)*100:0}%")</span>
+        </div>
+    </div>
+
+    <div class="storage-details">
+        @foreach (var item in _storageItems)
+        {
+            <div class="storage-item">
+                <span class="item-name">@item.Name</span>
+                <span class="item-size">@item.Size GB</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public double UsedGB { get; set; }
+
+    [Parameter]
+    public double TotalGB { get; set; } = 100;
+
+    [Parameter]
+    public List<StorageItem>? Items { get; set; }
+
+    private List<StorageItem> _storageItems = new();
+
+    protected override void OnParametersSet()
+    {
+        _storageItems = Items ?? new();
+    }
+}
+
+<style>
+    .storage-viz {
+        border: 1px solid var(--color-border);
+        padding: var(--space-4);
+    }
+
+    .storage-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-3);
+    }
+
+    .storage-header h4 {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .storage-info {
+        font-size: var(--font-xs);
+        color: var(--color-text-secondary);
+        font-weight: 600;
+        font-family: var(--font-mono);
+    }
+
+    .storage-bar {
+        width: 100%;
+        height: 20px;
+        background: var(--color-bg);
+        border: 1px solid var(--color-border);
+        margin-bottom: var(--space-3);
+    }
+
+    .storage-used {
+        height: 100%;
+        background: var(--color-accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+    }
+
+    .storage-label {
+        color: white;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .storage-details {
+        display: grid;
+        gap: var(--space-2);
+    }
+
+    .storage-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: var(--font-xs);
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .storage-item:last-child {
+        border-bottom: none;
+    }
+
+    .item-name {
+        color: var(--color-text-secondary);
+        font-weight: 600;
+    }
+
+    .item-size {
+        font-weight: 700;
+        font-family: var(--font-mono);
+    }
+</style>

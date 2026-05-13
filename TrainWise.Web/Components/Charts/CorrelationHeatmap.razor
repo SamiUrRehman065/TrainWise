@@ -1,0 +1,57 @@
+@inject IJSRuntime JS
+
+<div class="chart-container">
+    <h4 class="chart-title">Correlation Heatmap</h4>
+    @if (Matrix is not null && Matrix.Count > 0)
+    {
+        <div id="@_chartId" class="chart-plot"></div>
+    }
+    else
+    {
+        <p class="chart-empty">Correlation data not available for this dataset.</p>
+    }
+</div>
+
+@code {
+    [Parameter] public List<List<double>>? Matrix { get; set; }
+    [Parameter] public List<string>? ColumnNames { get; set; }
+
+    private string _chartId = $"corr-{Guid.NewGuid():N}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Matrix is not null && Matrix.Count > 0)
+        {
+            var columns = ColumnNames ?? Matrix.Select((_, i) => $"Col {i}").ToList();
+            await JS.InvokeVoidAsync("PlotlyInterop.renderCorrelationHeatmap", _chartId, Matrix, columns);
+        }
+    }
+}
+
+<style>
+    .chart-container {
+        background: var(--surf);
+        border: 1px solid var(--brd);
+        padding: var(--space-5);
+    }
+
+    .chart-title {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--mut);
+        margin: 0 0 var(--space-3);
+    }
+
+    .chart-plot {
+        width: 100%;
+        min-height: 400px;
+    }
+
+    .chart-empty {
+        color: var(--mut);
+        font-size: 13px;
+        padding: var(--space-4) 0;
+    }
+</style>

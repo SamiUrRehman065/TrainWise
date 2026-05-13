@@ -1,0 +1,2 @@
+-- Initial schema snapshot
+-- See ../schema/create_tables.sql for the full DDL

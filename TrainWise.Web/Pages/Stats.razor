@@ -1,0 +1,364 @@
+@page "/stats"
+@page "/dashboard"
+@inject TrainWise.Web.Services.Api.DatasetApi DatasetApi
+@inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
+@inject TrainWise.Web.Services.State.SessionState SessionState
+@inject ILogger<Stats> Logger
+@using TrainWise.Web.Components.Common
+
+
+<section class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="page-desc">Overview of your ML workspace and storage.</p>
+    </div>
+</section>
+
+@if (!SessionState.IsAuthenticated)
+{
+    <div class="state-card">
+        <div class="state-text">Please <a href="/login">sign in</a> to view your dashboard.</div>
+    </div>
+}
+else
+{
+    @if (_isLoading)
+    {
+        <div class="state-card">
+            <div class="loading-spinner"></div>
+            <div class="state-text">Loading dashboard...</div>
+        </div>
+    }
+    else if (_stats is not null)
+    {
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Datasets</div>
+                <div class="stat-value">@_stats.TotalDatasets</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Active Datasets</div>
+                <div class="stat-value">@_stats.ActiveDatasets</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Total Experiments</div>
+                <div class="stat-value">@_stats.TotalExperiments</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Storage Mode</div>
+                <div class="stat-value">@_stats.StorageMode</div>
+            </div>
+        </div>
+
+        <section class="actions-grid">
+            <div class="action-card">
+                <h3>Dataset Management</h3>
+                <p class="action-desc">Manage your datasets, archives, and storage.</p>
+                <div class="action-buttons">
+                    <a href="/datasets" class="button primary">View Datasets</a>
+                    <button class="button ghost" @onclick="ArchiveDatasetsAsync">Archive Old</button>
+                </div>
+            </div>
+
+            <div class="action-card">
+                <h3>Training</h3>
+                <p class="action-desc">Train new models and review history.</p>
+                <div class="action-buttons">
+                    <a href="/training" class="button primary">Train Model</a>
+                    <a href="/experiments" class="button ghost">View History</a>
+                </div>
+            </div>
+
+            <div class="action-card">
+                <h3>Account</h3>
+                <p class="action-desc">Manage your profile and settings.</p>
+                <div class="action-buttons">
+                    <a href="/profile" class="button primary">Profile</a>
+                    <a href="/settings" class="button ghost">Settings</a>
+                </div>
+            </div>
+        </section>
+
+        @if (_trainingHistory?.Any() == true)
+        {
+            <section class="recent-section">
+                <h2>Recent Training Runs</h2>
+                <div class="recent-list">
+                    @foreach (var run in _trainingHistory.Take(5))
+                    {
+                        <div class="recent-item">
+                            <div class="recent-details">
+                                <div class="recent-name">@run.ModelName</div>
+                                <div class="recent-meta">@run.TaskType &middot; @run.CreatedAt.ToString("MMM dd")</div>
+                            </div>
+                            <div class="recent-duration">@(run.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</div>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert alert-@(_messageType)">
+                @_message
+            </div>
+        }
+    }
+}
+
+@code {
+    private DashboardStats? _stats;
+    private List<TrainingHistoryItem>? _trainingHistory;
+    private bool _isLoading = true;
+    private string? _message;
+    private string _messageType = "success";
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem { Label = "Dashboard" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            _stats = await DatasetApi.GetStatsAsync();
+
+            var historyResponse = await ExperimentApi.GetTrainingHistoryAsync();
+            _trainingHistory = historyResponse?.TrainingHistory;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading dashboard data");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ArchiveDatasetsAsync()
+    {
+        try
+        {
+            var success = await DatasetApi.ArchiveAsync(30);
+
+            if (success)
+            {
+                _message = "Datasets archived successfully!";
+                _messageType = "success";
+                await LoadDashboardData();
+            }
+            else
+            {
+                _message = "Failed to archive datasets.";
+                _messageType = "error";
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error: {ex.Message}";
+            _messageType = "error";
+            Logger.LogError(ex, "Archive error");
+        }
+    }
+}
+
+<style>
+    .page-header {
+        margin-bottom: var(--space-7);
+    }
+
+    .page-header h1 {
+        font-size: 32px;
+        font-weight: 700;
+        margin: 0 0 var(--space-2);
+    }
+
+    .page-desc {
+        color: var(--mut);
+        font-size: 15px;
+        margin: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: var(--space-4);
+        margin-bottom: var(--space-7);
+    }
+
+    .stat-card {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        padding: var(--space-5);
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: var(--mut);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        font-family: var(--sans);
+    }
+
+    .stat-value {
+        font-size: 28px;
+        font-weight: 400;
+        margin-top: var(--space-1);
+        font-family: var(--mono);
+        color: var(--txt);
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: var(--space-5);
+        margin-bottom: var(--space-7);
+    }
+
+    .action-card {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        padding: var(--space-6);
+    }
+
+    .action-card h3 {
+        margin: 0 0 var(--space-2);
+        font-size: 18px;
+    }
+
+    .action-desc {
+        font-size: 13px;
+        color: var(--mut);
+        margin-bottom: var(--space-4);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: var(--space-3);
+    }
+
+    .action-buttons .button {
+        flex: 1;
+        text-align: center;
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .recent-section {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        padding: var(--space-6);
+        margin-bottom: var(--space-6);
+    }
+
+    .recent-section h2 {
+        margin: 0 0 var(--space-5);
+        font-size: 20px;
+    }
+
+    .recent-list {
+        display: grid;
+        gap: 0;
+    }
+
+    .recent-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        padding: var(--space-3) 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .recent-item:last-child {
+        border-bottom: none;
+    }
+
+    .recent-details {
+        flex: 1;
+    }
+
+    .recent-name {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .recent-meta {
+        font-size: 12px;
+        color: var(--mut);
+        margin-top: 2px;
+    }
+
+    .recent-duration {
+        font-size: 13px;
+        font-weight: 600;
+        font-family: var(--font-mono);
+        color: var(--color-accent);
+    }
+
+    .state-card {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        padding: var(--space-8) var(--space-6);
+        text-align: center;
+    }
+
+    .state-card .state-text {
+        color: var(--color-text-secondary);
+    }
+
+    .state-card a {
+        color: var(--color-accent);
+        text-decoration: underline;
+    }
+
+    .loading-spinner {
+        width: 32px;
+        height: 32px;
+        border: 2px solid var(--color-border);
+        border-top-color: var(--color-accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto var(--space-4);
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .alert {
+        padding: var(--space-4);
+        border: 1px solid var(--color-border);
+        margin-top: var(--space-5);
+    }
+
+    .alert-success {
+        border-color: var(--color-positive);
+        color: var(--color-positive);
+    }
+
+    .alert-error {
+        border-color: var(--color-negative);
+        color: var(--color-negative);
+    }
+
+    @@media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

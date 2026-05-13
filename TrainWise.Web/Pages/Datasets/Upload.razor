@@ -1,0 +1,426 @@
+@page "/datasets/upload"
+@page "/upload"
+@using Microsoft.AspNetCore.Components.Forms
+@inject TrainWise.Web.Services.Api.DatasetApi DatasetApi
+@inject NavigationManager NavManager
+@using TrainWise.Web.Components.Common
+
+
+<div class="page-header">
+    <h1>Upload dataset</h1>
+    <p class="page-desc">Upload a CSV or XLSX file (up to 50 MB) for training.</p>
+</div>
+
+<div class="upload-layout">
+    <div class="upload-main">
+        <div class="upload-card">
+            <div class="dropzone" @ondragover="() => { }" @ondrop="OnDrop">
+                <p class="dropzone-label">Drop file here or click to browse</p>
+                <InputFile OnChange="OnFileSelected" />
+            </div>
+
+            @if (_file is not null)
+            {
+                <div class="file-info">
+                    <div class="file-details">
+                        <span class="file-label">File:</span>
+                        <span class="file-name">@_file.Name</span>
+                    </div>
+                    <div class="file-details">
+                        <span class="file-label">Size:</span>
+                        <span class="file-size">@FormatSize(_file.Size)</span>
+                    </div>
+                    <button class="button ghost" @onclick="ClearFile">Remove</button>
+                </div>
+            }
+
+            <div class="upload-actions">
+                <button class="button primary" @onclick="UploadAsync" disabled="@(_file is null || _isUploading)">
+                    @if (_isUploading)
+                    {
+                        <span>Uploading…</span>
+                    }
+                    else
+                    {
+                        <span>Upload file</span>
+                    }
+                </button>
+                <a href="/datasets" class="button ghost">All datasets</a>
+            </div>
+
+            @if (_response is not null)
+            {
+                <div class="upload-result">
+                    <p class="result-title">Upload completed</p>
+                    <div class="result-details">
+                        <div class="result-row">
+                            <span class="result-label">File:</span>
+                            <span class="result-value">@_response.FileName</span>
+                        </div>
+                        <div class="result-row">
+                            <span class="result-label">Dataset ID:</span>
+                            <span class="result-value mono">@_response.DatasetId</span>
+                        </div>
+                    </div>
+                    @if (_response.IsDuplicate)
+                    {
+                        <p class="result-duplicate">Duplicate detected — existing dataset reused.</p>
+                    }
+                    <div class="result-actions">
+                        <a href="@($"/datasets/{_response.DatasetId}")" class="button primary">View dataset</a>
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_message))
+            {
+                <div class="alert alert-@(_messageType)">
+                    @_message
+                </div>
+            }
+        </div>
+    </div>
+
+    <aside class="upload-sidebar">
+        <div class="sidebar-section">
+            <h4>Supported formats</h4>
+            <ul>
+                <li><strong>CSV</strong> — comma-separated values</li>
+                <li><strong>XLSX</strong> — Excel workbook</li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <h4>Limits</h4>
+            <ul>
+                <li>Maximum file size: <strong>50 MB</strong></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <h4>Tips</h4>
+            <ul>
+                <li>First row must contain column headers</li>
+                <li>Remove index columns before uploading</li>
+                <li>For classification, target column must have discrete values</li>
+            </ul>
+        </div>
+    </aside>
+</div>
+
+@code {
+    private IBrowserFile? _file;
+    private TrainWise.Web.Models.DatasetUploadResponse? _response;
+    private string? _message;
+    private string _messageType = "success";
+    private bool _isUploading = false;
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem { Label = "Datasets", Url = "/datasets" },
+        new BreadcrumbItem { Label = "Upload" }
+    };
+
+    private void OnFileSelected(InputFileChangeEventArgs args)
+    {
+        _file = args.File;
+        _response = null;
+        _message = null;
+    }
+
+    private void OnDrop()
+    {
+        // Drag-and-drop handled by InputFile component
+    }
+
+    private void ClearFile()
+    {
+        _file = null;
+        _response = null;
+        _message = null;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (_file is null)
+        {
+            return;
+        }
+
+        _isUploading = true;
+        _message = null;
+        _response = null;
+
+        try
+        {
+            _response = await DatasetApi.UploadAsync(_file);
+            if (_response is not null)
+            {
+                _message = "Upload completed successfully.";
+                _messageType = "success";
+                _file = null;
+            }
+            else
+            {
+                _message = "Upload failed. Please try again.";
+                _messageType = "error";
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"Upload error: {ex.Message}";
+            _messageType = "error";
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
+
+<style>
+    .page-header {
+        margin-bottom: var(--space-6);
+    }
+
+    .page-header h1 {
+        font-family: var(--font-ui);
+        font-size: 1.75rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-1);
+        color: var(--color-text);
+    }
+
+    .page-desc {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .upload-layout {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: var(--space-6);
+    }
+
+    .upload-main {
+        min-width: 0;
+    }
+
+    .upload-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-6);
+    }
+
+    .dropzone {
+        border: 1px solid var(--color-border);
+        padding: var(--space-8) var(--space-6);
+        text-align: center;
+        background: var(--color-bg);
+    }
+
+    .dropzone-label {
+        margin: 0 0 var(--space-3);
+        color: var(--color-text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .dropzone ::deep input {
+        font-family: var(--font-ui);
+        font-size: 0.875rem;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: var(--space-5);
+        padding: var(--space-3) var(--space-4);
+        margin-top: var(--space-4);
+        border: 1px solid var(--color-border);
+        background: var(--color-bg);
+        flex-wrap: wrap;
+    }
+
+    .file-details {
+        display: flex;
+        gap: var(--space-2);
+        align-items: center;
+    }
+
+    .file-label {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .file-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-text);
+    }
+
+    .file-size {
+        font-size: 0.875rem;
+        color: var(--color-text-secondary);
+        font-family: var(--font-mono);
+    }
+
+    .upload-actions {
+        display: flex;
+        gap: var(--space-3);
+        margin-top: var(--space-5);
+    }
+
+    .upload-actions .button {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .upload-result {
+        margin-top: var(--space-5);
+        padding: var(--space-5);
+        border: 1px solid var(--color-border);
+        background: var(--color-bg);
+    }
+
+    .result-title {
+        font-family: var(--font-ui);
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-4);
+        color: var(--color-text);
+    }
+
+    .result-details {
+        display: grid;
+        gap: var(--space-2);
+        margin-bottom: var(--space-4);
+    }
+
+    .result-row {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-3);
+        font-size: 0.875rem;
+        padding: var(--space-1) 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .result-row:last-child {
+        border-bottom: none;
+    }
+
+    .result-label {
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-size: 0.8125rem;
+    }
+
+    .result-value {
+        color: var(--color-text);
+        text-align: right;
+    }
+
+    .result-value.mono {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+    }
+
+    .result-duplicate {
+        margin: 0 0 var(--space-4);
+        font-size: 0.875rem;
+        color: var(--color-text-secondary);
+    }
+
+    .result-actions {
+        display: flex;
+        gap: var(--space-3);
+    }
+
+    .result-actions .button {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .alert {
+        padding: var(--space-3) var(--space-4);
+        margin-top: var(--space-4);
+        font-size: 0.875rem;
+        border: 1px solid var(--color-border);
+    }
+
+    .alert-success {
+        background: var(--color-bg);
+        color: var(--color-text);
+        border-color: var(--color-border);
+    }
+
+    .alert-error {
+        background: var(--color-bg);
+        color: var(--color-negative);
+        border-color: var(--color-negative);
+    }
+
+    .upload-sidebar {
+        min-width: 0;
+    }
+
+    .sidebar-section {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-4);
+        margin-bottom: var(--space-4);
+    }
+
+    .sidebar-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .sidebar-section h4 {
+        font-family: var(--font-ui);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0 0 var(--space-3);
+        color: var(--color-text);
+    }
+
+    .sidebar-section ul {
+        margin: 0;
+        padding-left: var(--space-4);
+    }
+
+    .sidebar-section li {
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+        margin-bottom: var(--space-2);
+        line-height: 1.5;
+    }
+
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    @@media (max-width: 720px) {
+        .upload-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

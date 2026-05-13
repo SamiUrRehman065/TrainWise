@@ -1,0 +1,246 @@
+@page "/experiments"
+@page "/history"
+@inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
+@inject TrainWise.Web.Services.State.SessionState SessionState
+@using TrainWise.Web.Components.Common
+
+
+<div class="page-header">
+    <h1>Training history</h1>
+    <p class="page-desc">Review all your experiment runs and performance metrics.</p>
+    <div class="page-actions">
+        <a href="/training" class="button primary">New training</a>
+    </div>
+</div>
+
+@if (!SessionState.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        <p>Please <a href="/login">sign in</a> to view your experiments.</p>
+    </div>
+}
+else
+{
+    @if (_isLoading)
+    {
+        <div class="state-card">
+            <div class="loading-spinner"></div>
+            <p class="state-text">Loading experiments…</p>
+        </div>
+    }
+    else if (_history is null || _history.Items.Count == 0)
+    {
+        <div class="state-card empty">
+            <h3>No experiments yet</h3>
+            <p class="state-text">Start by uploading a dataset and training your first model.</p>
+            <a href="/datasets" class="button primary">Get started</a>
+        </div>
+    }
+    else
+    {
+        <div class="experiments-grid">
+            @foreach (var item in _history.Items.OrderByDescending(x => x.CreatedAt))
+            {
+                <div class="exp-card">
+                    <div class="exp-header">
+                        <span class="tag">@item.TaskType</span>
+                        <span class="exp-date">@item.CreatedAt.ToString("MMM dd, yyyy")</span>
+                    </div>
+                    <div class="exp-body">
+                        <h4>@item.ModelName</h4>
+                        <div class="exp-details">
+                            <div class="exp-row">
+                                <span class="exp-label">Dataset</span>
+                                <span class="exp-value">@item.DatasetName</span>
+                            </div>
+                            <div class="exp-row">
+                                <span class="exp-label">Metrics</span>
+                                <span class="exp-value">@item.MetricsSummary</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="exp-actions">
+                        <a href="@($"/experiments/{item.ExperimentId}")" class="button ghost small">Details</a>
+                        <a href="/experiments/compare" class="button ghost small">Compare</a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private TrainWise.Web.Models.ExperimentList? _history;
+    private bool _isLoading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem { Label = "History" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _history = await ExperimentApi.GetHistoryAsync();
+        _isLoading = false;
+    }
+}
+
+<style>
+    .page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--space-5);
+        margin-bottom: var(--space-6);
+        flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+        font-family: var(--font-ui);
+        font-size: 1.75rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-1);
+        color: var(--color-text);
+        width: 100%;
+    }
+
+    .page-desc {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .page-actions {
+        flex-shrink: 0;
+    }
+
+    .experiments-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: var(--space-4);
+    }
+
+    .exp-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .exp-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .exp-date {
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+    }
+
+    .exp-body {
+        padding: var(--space-4);
+        flex: 1;
+    }
+
+    .exp-body h4 {
+        font-family: var(--font-ui);
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-3);
+        color: var(--color-text);
+    }
+
+    .exp-details {
+        display: grid;
+        gap: var(--space-2);
+    }
+
+    .exp-row {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-3);
+        font-size: 0.8125rem;
+    }
+
+    .exp-label {
+        color: var(--color-text-secondary);
+        font-weight: 500;
+    }
+
+    .exp-value {
+        font-weight: 500;
+        color: var(--color-text);
+        text-align: right;
+    }
+
+    .exp-actions {
+        padding: var(--space-3) var(--space-4);
+        border-top: 1px solid var(--color-border);
+        display: flex;
+        gap: var(--space-2);
+    }
+
+    .exp-actions .button.small {
+        flex: 1;
+        justify-content: center;
+        padding: var(--space-2) var(--space-3);
+        font-size: 0.8125rem;
+    }
+
+    .state-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-7) var(--space-5);
+        text-align: center;
+    }
+
+    .state-card.empty h3 {
+        font-family: var(--font-ui);
+        font-size: 1.125rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-2);
+        color: var(--color-text);
+    }
+
+    .state-text {
+        margin: 0 0 var(--space-4);
+        color: var(--color-text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .state-card .button {
+        display: inline-flex;
+    }
+
+    .alert {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.875rem;
+        border: 1px solid var(--color-border);
+    }
+
+    .alert p {
+        margin: 0;
+    }
+
+    .alert a {
+        color: var(--color-accent);
+        text-decoration: underline;
+    }
+
+    .alert-warning {
+        background: var(--color-bg);
+        color: var(--color-text);
+    }
+
+    @@media (max-width: 720px) {
+        .page-header {
+            flex-direction: column;
+        }
+
+        .experiments-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

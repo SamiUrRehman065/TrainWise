@@ -1,0 +1,373 @@
+@inject TrainWise.Web.Services.State.SessionState SessionState
+@inject NavigationManager NavManager
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<header class="topnav">
+    <div class="topnav-inner">
+        <a href="/" class="topnav-brand">
+            <span class="brand-icon">TW</span>
+            <span class="brand-text">TrainWise</span>
+        </a>
+
+        @if (SessionState.IsAuthenticated)
+        {
+            <nav class="topnav-links">
+                <a href="/stats" class="topnav-link @IsActive("/stats", "/dashboard")">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    Dashboard
+                </a>
+                <a href="/datasets" class="topnav-link @IsActive("/datasets", "/upload")">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Datasets
+                </a>
+                <a href="/training" class="topnav-link @IsActive("/training", "/train")">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    Training
+                </a>
+                <a href="/experiments" class="topnav-link @IsActive("/experiments", "/history")">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    History
+                </a>
+                <a href="/metrics" class="topnav-link @IsActive("/metrics", "/results")">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Metrics
+                </a>
+                <a href="/compare" class="topnav-link @IsActive("/compare")">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Compare
+                </a>
+            </nav>
+
+            <div class="topnav-right">
+                <div class="user-menu">
+                    <button class="user-menu-trigger" @onclick="ToggleMenu">
+                        <span class="user-avatar">@(SessionState.Username?.Substring(0, 1).ToUpper())</span>
+                        <span class="user-name">@SessionState.Username</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    @if (_showMenu)
+                    {
+                        <div class="user-dropdown">
+                            <a href="/profile" class="dropdown-item" @onclick="CloseMenu">Profile</a>
+                            <a href="/settings" class="dropdown-item" @onclick="CloseMenu">Settings</a>
+                            <hr class="dropdown-divider" />
+                            <button class="dropdown-item dropdown-danger" @onclick="LogoutAsync">Logout</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <nav class="topnav-links topnav-links-right">
+                <a href="/" class="topnav-link @IsActive("/")">Home</a>
+                <a href="/login" class="topnav-link">Sign in</a>
+                <a href="/signup" class="button primary small">Sign up</a>
+            </nav>
+        }
+    </div>
+</header>
+
+@code {
+    private string _currentRelativePath = "";
+    private bool _showMenu = false;
+
+    private string IsActive(params string[] paths)
+    {
+        if (string.IsNullOrWhiteSpace(_currentRelativePath))
+        {
+            return paths.Any(path => path == "/") ? "active" : "";
+        }
+
+        var currentPath = "/" + _currentRelativePath.Trim('/');
+
+        foreach (var path in paths)
+        {
+            var normalizedPath = path.TrimEnd('/');
+            if (string.Equals(currentPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return "active";
+            }
+            if (normalizedPath != "/" &&
+                currentPath.StartsWith(normalizedPath + "/", StringComparison.OrdinalIgnoreCase))
+            {
+                return "active";
+            }
+        }
+        return "";
+    }
+
+    protected override void OnInitialized()
+    {
+        SessionState.OnChanged += StateHasChanged;
+        NavManager.LocationChanged += OnLocationChanged;
+        UpdateCurrentPath();
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _showMenu = false;
+        UpdateCurrentPath();
+        StateHasChanged();
+    }
+
+    private void UpdateCurrentPath()
+    {
+        _currentRelativePath = NavManager.ToBaseRelativePath(NavManager.Uri).Split('?', '#')[0] ?? "";
+    }
+
+    private void ToggleMenu() => _showMenu = !_showMenu;
+    private void CloseMenu() => _showMenu = false;
+
+    private async Task LogoutAsync()
+    {
+        _showMenu = false;
+        SessionState.Clear();
+        await SessionState.ClearStorageAsync(JSRuntime);
+        NavManager.NavigateTo("/login", forceLoad: true);
+    }
+
+    void IDisposable.Dispose()
+    {
+        SessionState.OnChanged -= StateHasChanged;
+        NavManager.LocationChanged -= OnLocationChanged;
+    }
+}
+
+<style>
+    .topnav {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background: rgba(15, 18, 22, 0.95);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--brd);
+    }
+
+    .topnav-inner {
+        max-width: var(--content-max);
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        padding: 0 var(--space-5);
+        height: 56px;
+    }
+
+    .topnav-brand {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        text-decoration: none;
+        flex-shrink: 0;
+    }
+
+    .brand-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: var(--acc);
+        color: var(--bg);
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+
+    .brand-text {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--txt);
+    }
+
+    .topnav-brand:hover {
+        text-decoration: none;
+    }
+
+    .topnav-links {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
+        flex: 1;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none;
+    }
+
+    .topnav-links::-webkit-scrollbar {
+        display: none;
+    }
+
+    .topnav-links-right {
+        flex: none;
+        margin-left: auto;
+        gap: var(--space-3);
+    }
+
+    .topnav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--mut);
+        text-decoration: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        transition: color 0.15s ease;
+    }
+
+    .topnav-link svg {
+        opacity: 0.6;
+    }
+
+    .topnav-link:hover {
+        color: var(--txt);
+        text-decoration: none;
+    }
+
+    .topnav-link:hover svg {
+        opacity: 1;
+    }
+
+    .topnav-link.active {
+        color: var(--acc);
+        border-bottom-color: var(--acc);
+    }
+
+    .topnav-link.active svg {
+        opacity: 1;
+    }
+
+    .topnav-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    /* User dropdown menu */
+    .user-menu {
+        position: relative;
+    }
+
+    .user-menu-trigger {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: 4px 8px;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        color: var(--txt);
+    }
+
+    .user-menu-trigger:hover {
+        border-color: var(--brd);
+    }
+
+    .user-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        background: var(--brd);
+        color: var(--acc);
+        font-size: 12px;
+        font-weight: 700;
+        font-family: var(--mono);
+    }
+
+    .user-name {
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .user-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        min-width: 160px;
+        background: var(--surf);
+        border: 1px solid var(--brd);
+        padding: var(--space-1) 0;
+        z-index: 100;
+        animation: dropIn 0.12s ease-out;
+    }
+
+    @@keyframes dropIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dropdown-item {
+        display: block;
+        width: 100%;
+        padding: 8px 14px;
+        font-size: 13px;
+        color: var(--txt);
+        text-decoration: none;
+        text-align: left;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-family: var(--sans);
+    }
+
+    .dropdown-item:hover {
+        background: var(--brd);
+        text-decoration: none;
+    }
+
+    .dropdown-danger {
+        color: var(--color-negative);
+    }
+
+    .dropdown-divider {
+        border: none;
+        border-top: 1px solid var(--brd);
+        margin: var(--space-1) 0;
+    }
+
+    @@media (max-width: 900px) {
+        .topnav-inner {
+            padding: 0 var(--space-3);
+            gap: var(--space-2);
+            flex-wrap: wrap;
+            height: auto;
+            min-height: 56px;
+            padding-top: var(--space-2);
+            padding-bottom: var(--space-2);
+        }
+
+        .topnav-links {
+            order: 3;
+            flex: 1 1 100%;
+            gap: 0;
+        }
+
+        .topnav-link svg {
+            display: none;
+        }
+
+        .topnav-links-right {
+            order: 2;
+            flex: none;
+            margin-left: auto;
+        }
+
+        .topnav-right {
+            order: 2;
+        }
+
+        .brand-text {
+            display: none;
+        }
+    }
+</style>

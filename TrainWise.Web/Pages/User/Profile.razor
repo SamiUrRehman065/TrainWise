@@ -1,0 +1,370 @@
+@page "/profile"
+@inject TrainWise.Web.Services.Api.DatasetApi DatasetApi
+@inject TrainWise.Web.Services.State.SessionState SessionState
+@inject NavigationManager NavManager
+@inject ILogger<Profile> Logger
+@inject IJSRuntime JSRuntime
+@using TrainWise.Web.Components.Common
+
+
+<div class="page-header">
+    <h1>Profile</h1>
+    <p class="page-desc">Manage your account and view workspace statistics.</p>
+</div>
+
+@if (!SessionState.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        <p>Please <a href="/login">sign in</a> to view your profile.</p>
+    </div>
+}
+else
+{
+    <div class="profile-layout">
+        <div class="profile-card">
+            <div class="profile-head">
+                <div class="profile-initial">@SessionState.Username?.FirstOrDefault()</div>
+                <div>
+                    <h2>@SessionState.Username</h2>
+                    <p class="profile-role">ML Workspace</p>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <h3>Account information</h3>
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label">Username</span>
+                        <span class="info-value">@SessionState.Username</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Session token</span>
+                        <span class="info-value mono">@(SessionState.SessionToken?.Length > 20 ? SessionState.SessionToken[..20] : SessionState.SessionToken ?? "N/A")…</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status</span>
+                        <span class="info-value"><span class="tag">Active</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-actions">
+                <a href="/settings" class="button ghost">Settings</a>
+                <button class="button ghost" style="color: var(--color-negative);" @onclick="LogoutAsync">Logout</button>
+            </div>
+        </div>
+
+        <div class="stats-card">
+            <h3>Workspace statistics</h3>
+
+            @if (_isLoading)
+            {
+                <div class="state-card">
+                    <div class="loading-spinner"></div>
+                    <p class="state-text">Loading statistics…</p>
+                </div>
+            }
+            else if (_stats is not null)
+            {
+                <div class="stats-list">
+                    <div class="stat-row">
+                        <span class="stat-name">Total datasets</span>
+                        <span class="stat-count">@_stats.TotalDatasets</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Active datasets</span>
+                        <span class="stat-count">@_stats.ActiveDatasets</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Total experiments</span>
+                        <span class="stat-count">@_stats.TotalExperiments</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Estimated size</span>
+                        <span class="stat-count">@FormatBytes(_stats.EstimatedSize)</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Storage mode</span>
+                        <span class="stat-count">@_stats.StorageMode</span>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <a href="/datasets" class="button primary">View datasets</a>
+                    <a href="/stats" class="button ghost">Full dashboard</a>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardStats? _stats;
+    private bool _isLoading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem { Label = "Profile" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        await LoadStats();
+        _isLoading = false;
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            _stats = await DatasetApi.GetStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading profile stats");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LogoutAsync()
+    {
+        SessionState.ClearSession();
+        await SessionState.ClearStorageAsync(JSRuntime);
+        NavManager.NavigateTo("/login", forceLoad: true);
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
+
+<style>
+    .page-header {
+        margin-bottom: var(--space-6);
+    }
+
+    .page-header h1 {
+        font-family: var(--font-ui);
+        font-size: 1.75rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-1);
+        color: var(--color-text);
+    }
+
+    .page-desc {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .profile-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-6);
+    }
+
+    .profile-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-6);
+    }
+
+    .profile-head {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+        padding-bottom: var(--space-6);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .profile-initial {
+        width: 48px;
+        height: 48px;
+        border: 1px solid var(--color-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 1.125rem;
+        color: var(--color-text);
+        background: var(--color-bg);
+    }
+
+    .profile-head h2 {
+        font-family: var(--font-ui);
+        font-size: 1.125rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-1);
+        color: var(--color-text);
+    }
+
+    .profile-role {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--color-text-secondary);
+    }
+
+    .profile-section {
+        margin-bottom: var(--space-5);
+    }
+
+    .profile-section h3 {
+        font-family: var(--font-ui);
+        font-size: 0.9375rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-3);
+        color: var(--color-text);
+    }
+
+    .info-list {
+        display: grid;
+        gap: 0;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-3) 0;
+        border-bottom: 1px solid var(--color-border);
+        font-size: 0.875rem;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        color: var(--color-text-secondary);
+        font-weight: 500;
+    }
+
+    .info-value {
+        font-weight: 500;
+        color: var(--color-text);
+    }
+
+    .info-value.mono {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+    }
+
+    .profile-actions {
+        display: flex;
+        gap: var(--space-3);
+    }
+
+    .profile-actions .button {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .stats-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-6);
+    }
+
+    .stats-card h3 {
+        font-family: var(--font-ui);
+        font-size: 0.9375rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-5);
+        color: var(--color-text);
+    }
+
+    .stats-list {
+        display: grid;
+        gap: var(--space-1);
+        margin-bottom: var(--space-5);
+    }
+
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-3) var(--space-4);
+        border: 1px solid var(--color-border);
+        background: var(--color-bg);
+    }
+
+    .stat-name {
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-weight: 500;
+    }
+
+    .stat-count {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--color-text);
+        font-family: var(--font-mono);
+    }
+
+    .quick-actions {
+        display: flex;
+        gap: var(--space-3);
+    }
+
+    .quick-actions .button {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .state-card {
+        text-align: center;
+        padding: var(--space-6) var(--space-4);
+    }
+
+    .state-text {
+        margin: var(--space-3) 0 0;
+        color: var(--color-text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .alert {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.875rem;
+        border: 1px solid var(--color-border);
+    }
+
+    .alert p {
+        margin: 0;
+    }
+
+    .alert a {
+        color: var(--color-accent);
+        text-decoration: underline;
+    }
+
+    .alert-warning {
+        background: var(--color-bg);
+        color: var(--color-text);
+    }
+
+    @@media (max-width: 720px) {
+        .profile-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .profile-head {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+</style>

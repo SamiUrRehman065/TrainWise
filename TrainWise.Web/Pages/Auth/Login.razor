@@ -1,0 +1,190 @@
+@page "/login"
+@inject TrainWise.Web.Services.Api.AuthApi AuthApi
+@inject TrainWise.Web.Services.State.SessionState SessionState
+@inject NavigationManager NavManager
+
+@if (SessionState.IsAuthenticated)
+{
+    <div class="auth-page">
+        <div class="auth-card">
+            <h1 class="auth-title">Redirecting...</h1>
+            <p class="auth-subtitle">You are already signed in.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="auth-page">
+        <div class="auth-card">
+            <h1 class="auth-title">TrainWise</h1>
+            <p class="auth-subtitle">Sign in to your workspace</p>
+
+            <div class="auth-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input
+                        id="username"
+                        type="text"
+                        @bind="_username"
+                        placeholder="Enter your username"
+                        @onkeyup='async (e) => { if (e.Key == "Enter") await LoginAsync(); }'
+                        autocomplete="username" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        id="password"
+                        type="password"
+                        @bind="_password"
+                        placeholder="Enter your password"
+                        @onkeyup='async (e) => { if (e.Key == "Enter") await LoginAsync(); }'
+                        autocomplete="current-password" />
+                </div>
+
+                <button class="button primary auth-submit" @onclick="LoginAsync" disabled="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span>Signing in...</span>
+                    }
+                    else
+                    {
+                        <span>Sign in</span>
+                    }
+                </button>
+
+                @if (!string.IsNullOrWhiteSpace(_message))
+                {
+                    <div class="alert alert-@(_isSuccess ? "success" : "error")">
+                        @_message
+                    </div>
+                }
+            </div>
+
+            <div class="auth-demo">
+                <p><strong>Demo credentials</strong></p>
+                <p>Username: <code>demo</code></p>
+                <p>Password: <code>demo</code></p>
+            </div>
+
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="/signup">Create one</a></p>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _username = string.Empty;
+    private string _password = string.Empty;
+    private string? _message;
+    private bool _isLoading = false;
+    private bool _isSuccess = false;
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/stats", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoginAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
+        {
+            _message = "Please enter username and password";
+            _isSuccess = false;
+            return;
+        }
+
+        _isLoading = true;
+        _message = null;
+
+        var success = await AuthApi.LoginAsync(_username, _password);
+
+        if (success)
+        {
+            _isSuccess = true;
+            _message = "Login successful! Redirecting...";
+            await Task.Delay(1000);
+            NavManager.NavigateTo("/stats");
+        }
+        else
+        {
+            _isSuccess = false;
+            _message = "Invalid credentials. Please try again.";
+            _password = string.Empty;
+        }
+
+        _isLoading = false;
+    }
+}
+
+<style>
+    .auth-page {
+        display: flex;
+        justify-content: center;
+        padding-top: var(--space-8);
+    }
+
+    .auth-card {
+        width: 100%;
+        max-width: 380px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        padding: var(--space-6) var(--space-5);
+    }
+
+    .auth-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: var(--space-1);
+        text-align: center;
+    }
+
+    .auth-subtitle {
+        font-size: 14px;
+        color: var(--color-text-secondary);
+        text-align: center;
+        margin-bottom: var(--space-5);
+    }
+
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+
+    .auth-submit {
+        width: 100%;
+        margin-top: var(--space-2);
+    }
+
+    .auth-demo {
+        margin-top: var(--space-5);
+        padding: var(--space-4);
+        border: 1px solid var(--color-border);
+        font-size: 13px;
+    }
+
+    .auth-demo p {
+        margin-bottom: var(--space-1);
+    }
+
+    .auth-demo code {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--color-accent);
+    }
+
+    .auth-footer {
+        margin-top: var(--space-5);
+        padding-top: var(--space-4);
+        border-top: 1px solid var(--color-border);
+        text-align: center;
+        font-size: 13px;
+    }
+</style>

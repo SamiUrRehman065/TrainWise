@@ -1,0 +1,32 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.cache
+*.log
+
+# VS Code
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.db
+
+# Node
+node_modules/
+wwwroot/dist/
+
+# Uploads
+/data/uploads/
+
+# OS
+.DS_Store
+Thumbs.db

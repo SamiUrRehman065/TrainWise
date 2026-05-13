@@ -1,0 +1,399 @@
+@page "/experiments/compare"
+@page "/compare"
+@inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
+@inject TrainWise.Web.Services.State.SessionState SessionState
+@inject ILogger<CompareExperiments> Logger
+@inject IJSRuntime JSRuntime
+@using TrainWise.Web.Components.Common
+
+
+@if (!SessionState.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        <p>Please <a href="/login">sign in</a> to compare experiments.</p>
+    </div>
+}
+else
+{
+    <div class="page-header">
+        <h1>Compare experiments</h1>
+        <p class="page-desc">Side-by-side comparison of training results.</p>
+    </div>
+
+    <div class="compare-layout">
+        <div class="compare-selectors">
+            <div class="selector-group">
+                <label>Experiment 1</label>
+                <select @bind="_exp1Id" @bind:after="OnExperimentSelected">
+                    <option value="">-- Select experiment --</option>
+                    @if (_experiments?.Any() == true)
+                    {
+                        @foreach (var exp in _experiments)
+                        {
+                            <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType)</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="selector-group">
+                <label>Experiment 2</label>
+                <select @bind="_exp2Id" @bind:after="OnExperimentSelected">
+                    <option value="">-- Select experiment --</option>
+                    @if (_experiments?.Any() == true)
+                    {
+                        @foreach (var exp in _experiments)
+                        {
+                            <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType)</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <button class="button primary" @onclick="CompareAsync" disabled="@(string.IsNullOrEmpty(_exp1Id) || string.IsNullOrEmpty(_exp2Id))">
+                Compare
+            </button>
+        </div>
+
+        @if (_isComparing)
+        {
+            <div class="state-card">
+                <div class="loading-spinner"></div>
+                <p class="state-text">Loading comparison data…</p>
+            </div>
+        }
+        else if (_experiment1 is not null && _experiment2 is not null)
+        {
+            <div class="compare-table-wrap">
+                <table class="compare-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>
+                                <div class="exp-head">
+                                    <strong>@_experiment1.ModelName</strong>
+                                    <small>@_experiment1.TaskType</small>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="exp-head">
+                                    <strong>@_experiment2.ModelName</strong>
+                                    <small>@_experiment2.TaskType</small>
+                                </div>
+                            </th>
+                            <th>Difference</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Training duration</td>
+                            <td>@(_experiment1.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</td>
+                            <td>@(_experiment2.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</td>
+                            <td class="@GetDifferenceClass(_experiment1.TrainingDurationSec, _experiment2.TrainingDurationSec, false)">
+                                @GetDifference(_experiment1.TrainingDurationSec, _experiment2.TrainingDurationSec, false)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Created</td>
+                            <td>@_experiment1.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td>@_experiment2.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>Dataset</td>
+                            <td>@_experiment1.DatasetName</td>
+                            <td>@_experiment2.DatasetName</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="compare-actions">
+                <button class="button primary" @onclick="ExportComparisonAsync">Export comparison</button>
+                <a href="/experiments" class="button ghost">Back to history</a>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<TrainingHistoryItem>? _experiments;
+    private TrainingHistoryItem? _experiment1;
+    private TrainingHistoryItem? _experiment2;
+    private string? _exp1Id;
+    private string? _exp2Id;
+    private bool _isComparing = false;
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem { Label = "History", Url = "/experiments" },
+        new BreadcrumbItem { Label = "Compare" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadExperiments();
+    }
+
+    private async Task LoadExperiments()
+    {
+        try
+        {
+            var response = await ExperimentApi.GetTrainingHistoryAsync();
+            _experiments = response?.TrainingHistory;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading experiments");
+        }
+    }
+
+    private void OnExperimentSelected()
+    {
+        if (!string.IsNullOrEmpty(_exp1Id) && Guid.TryParse(_exp1Id, out var id1))
+        {
+            _experiment1 = _experiments?.FirstOrDefault(e => e.ExperimentId == id1);
+        }
+        if (!string.IsNullOrEmpty(_exp2Id) && Guid.TryParse(_exp2Id, out var id2))
+        {
+            _experiment2 = _experiments?.FirstOrDefault(e => e.ExperimentId == id2);
+        }
+    }
+
+    private async Task CompareAsync()
+    {
+        _isComparing = true;
+        OnExperimentSelected();
+        _isComparing = false;
+    }
+
+    private async Task ExportComparisonAsync()
+    {
+        if (_experiment1 is null || _experiment2 is null) return;
+
+        var comparison = new
+        {
+            Experiment1 = _experiment1,
+            Experiment2 = _experiment2,
+            ComparedAt = DateTime.UtcNow
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(comparison, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        await JSRuntime.InvokeVoidAsync("downloadFile", bytes, "experiment_comparison.json");
+    }
+
+    private string GetDifferenceClass(double? val1, double? val2, bool higherIsBetter)
+    {
+        if (val1 == null || val2 == null) return "";
+        var diff = val2.Value - val1.Value;
+        if (higherIsBetter)
+            return diff > 0 ? "diff-positive" : diff < 0 ? "diff-negative" : "";
+        else
+            return diff < 0 ? "diff-positive" : diff > 0 ? "diff-negative" : "";
+    }
+
+    private string GetDifference(double? val1, double? val2, bool higherIsBetter)
+    {
+        if (val1 == null || val2 == null) return "-";
+        var diff = val2.Value - val1.Value;
+        return diff > 0 ? $"+{diff:0.0}" : $"{diff:0.0}";
+    }
+}
+
+<style>
+    .page-header {
+        margin-bottom: var(--space-6);
+    }
+
+    .page-header h1 {
+        font-family: var(--font-ui);
+        font-size: 1.75rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-1);
+        color: var(--color-text);
+    }
+
+    .page-desc {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .compare-layout {
+        display: grid;
+        gap: var(--space-5);
+    }
+
+    .compare-selectors {
+        display: grid;
+        grid-template-columns: 1fr 1fr 140px;
+        gap: var(--space-4);
+        align-items: flex-end;
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-5);
+    }
+
+    .selector-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .selector-group label {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--color-text-secondary);
+    }
+
+    .selector-group select {
+        width: 100%;
+        padding: var(--space-2) 0;
+        border: none;
+        border-bottom: 1px solid var(--color-border);
+        background: transparent;
+        font-family: var(--font-ui);
+        font-size: 0.9375rem;
+        color: var(--color-text);
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        border-radius: 0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23707060' stroke-width='1.5'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0 center;
+        padding-right: var(--space-5);
+    }
+
+    .selector-group select:focus {
+        border-bottom-color: var(--color-accent);
+        border-bottom-width: 2px;
+    }
+
+    .compare-selectors .button {
+        align-self: flex-end;
+        justify-content: center;
+    }
+
+    .compare-table-wrap {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        overflow-x: auto;
+    }
+
+    .compare-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .compare-table th {
+        padding: var(--space-4);
+        text-align: left;
+        font-weight: 500;
+        border-bottom: 2px solid var(--color-border);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+    }
+
+    .exp-head {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .exp-head strong {
+        color: var(--color-text);
+        font-weight: 500;
+    }
+
+    .exp-head small {
+        font-weight: 400;
+        color: var(--color-text-secondary);
+        text-transform: lowercase;
+        font-size: 0.75rem;
+        letter-spacing: 0;
+    }
+
+    .compare-table td {
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .compare-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .diff-positive {
+        color: var(--color-text);
+        font-weight: 500;
+    }
+
+    .diff-negative {
+        color: var(--color-negative);
+        font-weight: 500;
+    }
+
+    .compare-actions {
+        display: flex;
+        gap: var(--space-3);
+        justify-content: flex-end;
+    }
+
+    .alert {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.875rem;
+        border: 1px solid var(--color-border);
+    }
+
+    .alert p {
+        margin: 0;
+    }
+
+    .alert a {
+        color: var(--color-accent);
+        text-decoration: underline;
+    }
+
+    .alert-warning {
+        background: var(--color-bg);
+        color: var(--color-text);
+    }
+
+    .state-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-7) var(--space-5);
+        text-align: center;
+    }
+
+    .state-text {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.875rem;
+    }
+
+    @@media (max-width: 720px) {
+        .compare-selectors {
+            grid-template-columns: 1fr;
+        }
+
+        .compare-table {
+            font-size: 0.8125rem;
+        }
+
+        .compare-table th,
+        .compare-table td {
+            padding: var(--space-3);
+        }
+
+        .compare-actions {
+            flex-direction: column;
+        }
+    }
+</style>

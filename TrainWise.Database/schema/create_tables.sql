@@ -1,0 +1,38 @@
+CREATE TABLE Users (
+    UserId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Users PRIMARY KEY DEFAULT NEWID(),
+    Username NVARCHAR(100) NOT NULL,
+    PasswordHash NVARCHAR(256) NOT NULL,
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_Users_CreatedAt DEFAULT GETDATE(),
+    LastLoginAt DATETIME2 NULL,
+    CONSTRAINT UQ_Users_Username UNIQUE (Username)
+);
+
+CREATE TABLE Datasets (
+    DatasetId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Datasets PRIMARY KEY DEFAULT NEWID(),
+    UserId UNIQUEIDENTIFIER NOT NULL,
+    FileName NVARCHAR(255) NOT NULL,
+    FilePath NVARCHAR(512) NOT NULL,
+    FileHash NVARCHAR(64) NULL,
+    [RowCount] INT NOT NULL,
+    [ColumnCount] INT NOT NULL,
+    UploadedAt DATETIME2 NOT NULL CONSTRAINT DF_Datasets_UploadedAt DEFAULT GETDATE(),
+    AnalysisSummaryJson NVARCHAR(MAX) NULL,
+    CONSTRAINT FK_Datasets_Users_UserId FOREIGN KEY (UserId)
+        REFERENCES Users (UserId)
+);
+
+CREATE INDEX IX_Datasets_UserId_FileHash ON Datasets(UserId, FileHash);
+
+CREATE TABLE Experiments (
+    ExperimentId UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Experiments PRIMARY KEY DEFAULT NEWID(),
+    DatasetId UNIQUEIDENTIFIER NOT NULL,
+    ModelName NVARCHAR(100) NOT NULL,
+    TaskType NVARCHAR(20) NOT NULL,
+    PreprocessingJson NVARCHAR(MAX) NOT NULL,
+    HyperparametersJson NVARCHAR(MAX) NULL,
+    MetricsJson NVARCHAR(MAX) NOT NULL,
+    TrainingDurationSec FLOAT NULL,
+    CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_Experiments_CreatedAt DEFAULT GETDATE(),
+    CONSTRAINT FK_Experiments_Datasets_DatasetId FOREIGN KEY (DatasetId)
+        REFERENCES Datasets (DatasetId)
+);

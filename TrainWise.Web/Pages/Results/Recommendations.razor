@@ -1,0 +1,567 @@
+@page "/results/{ExperimentId:guid}/recommendations"
+@inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
+@inject TrainWise.Web.Services.Api.DatasetApi DatasetApi
+@inject TrainWise.Web.Services.State.SessionState SessionState
+@inject NavigationManager NavManager
+@using TrainWise.Web.Components.Common
+
+
+@if (!SessionState.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        <p>Please <a href="/login">sign in</a> to view recommendations.</p>
+    </div>
+}
+else if (_isLoading)
+{
+    <div class="state-card">
+        <div class="loading-spinner"></div>
+        <p class="state-text">Analyzing experiment data…</p>
+    </div>
+}
+else if (_experiment is null)
+{
+    <div class="state-card empty">
+        <h3>Experiment not found</h3>
+        <p class="state-text">The experiment you're looking for doesn't exist.</p>
+        <a href="/experiments" class="button primary">Back to history</a>
+    </div>
+}
+else
+{
+    <div class="page-header">
+        <div>
+            <h1>Recommendations</h1>
+            <p class="page-desc">Actionable insights for @_experiment.ModelName.</p>
+        </div>
+        <div class="page-actions">
+            <a href="@($"/results/{ExperimentId}")" class="button ghost">View metrics</a>
+            <a href="@($"/experiments/{ExperimentId}")" class="button ghost">View details</a>
+        </div>
+    </div>
+
+    @if (_recommendations.Count == 0)
+    {
+        <div class="state-card empty">
+            <h3>All clear</h3>
+            <p class="state-text">No issues detected. The model is performing well with the current configuration.</p>
+        </div>
+    }
+    else
+    {
+        <div class="rec-list">
+            @foreach (var rec in _recommendations)
+            {
+                <div class="rec-card @GetSeverityClass(rec.Severity)">
+                    <div class="rec-header">
+                        <span class="rec-severity @GetSeverityClass(rec.Severity)">@GetSeverityLabel(rec.Severity)</span>
+                    </div>
+                    <p class="rec-message">@rec.Message</p>
+                    @if (!string.IsNullOrEmpty(rec.Action))
+                    {
+                        <div class="rec-action">
+                            <span class="rec-action-label">Action:</span>
+                            <span>@rec.Action</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    @if (_datasetSummary is not null)
+    {
+        <div class="quality-section">
+            <h3>Data quality overview</h3>
+            <div class="quality-grid">
+                <div class="quality-card">
+                    <span class="quality-label">Rows</span>
+                    <span class="quality-value">@_datasetSummary.RowCount.ToString("N0")</span>
+                </div>
+                <div class="quality-card">
+                    <span class="quality-label">Columns</span>
+                    <span class="quality-value">@_datasetSummary.ColumnCount</span>
+                </div>
+                @if (_datasetSummary.ImbalanceRatio.HasValue)
+                {
+                    <div class="quality-card @(_datasetSummary.ImbalanceRatio > 2 ? "warn" : "")">
+                        <span class="quality-label">Imbalance ratio</span>
+                        <span class="quality-value">@_datasetSummary.ImbalanceRatio.Value.ToString("0.00")</span>
+                    </div>
+                }
+                <div class="quality-card">
+                    <span class="quality-label">Missing values</span>
+                    <span class="quality-value">@_totalMissing</span>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid ExperimentId { get; set; }
+
+    private ExperimentDetail? _experiment;
+    private DatasetSummary? _datasetSummary;
+    private List<RecommendationItem> _recommendations = new();
+    private bool _isLoading = true;
+    private int _totalMissing;
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem { Label = "History", Url = "/experiments" },
+        new BreadcrumbItem { Label = "Recommendations" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _experiment = await ExperimentApi.GetAsync(ExperimentId);
+            if (_experiment is null) return;
+
+            _breadcrumbs = new()
+            {
+                new BreadcrumbItem { Label = "History", Url = "/experiments" },
+                new BreadcrumbItem { Label = _experiment.ModelName, Url = $"/experiments/{ExperimentId}" },
+                new BreadcrumbItem { Label = "Recommendations" }
+            };
+
+            _datasetSummary = await DatasetApi.GetSummaryAsync(_experiment.DatasetId);
+            if (_datasetSummary is not null)
+            {
+                _totalMissing = _datasetSummary.MissingValues.Values.Sum(m => m.Count);
+            }
+
+            GenerateRecommendations();
+        }
+        catch
+        {
+            // Experiment not found — _experiment stays null
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void GenerateRecommendations()
+    {
+        _recommendations = new List<RecommendationItem>();
+
+        if (_experiment is null) return;
+
+        var metrics = _experiment.Metrics;
+        var hyperParams = _experiment.HyperParameters;
+
+        // R-01: High missing values in dataset
+        if (_datasetSummary is not null)
+        {
+            foreach (var kvp in _datasetSummary.MissingValues)
+            {
+                if (kvp.Value.Percentage > 20)
+                {
+                    _recommendations.Add(new RecommendationItem
+                    {
+                        RuleId = "R-01",
+                        Severity = RecommendationSeverity.Warning,
+                        Message = $"High missing data detected in column '{kvp.Key}' ({kvp.Value.Percentage:F1}% missing).",
+                        Action = "Consider dropping this column or using model-based imputation (e.g., KNNImputer or IterativeImputer)."
+                    });
+                    break;
+                }
+            }
+        }
+
+        // R-02: Class imbalance
+        if (_datasetSummary?.ImbalanceRatio is not null && _datasetSummary.ImbalanceRatio > 2)
+        {
+            var smoteApplied = hyperParams?.ContainsKey("applySmote") == true
+                && hyperParams["applySmote"]?.ToString() == "True";
+            if (!smoteApplied)
+            {
+                _recommendations.Add(new RecommendationItem
+                {
+                    RuleId = "R-02",
+                    Severity = RecommendationSeverity.Warning,
+                    Message = $"Dataset imbalance detected (ratio: {_datasetSummary.ImbalanceRatio.Value:F2}). Minority classes may be underrepresented.",
+                    Action = "Enable SMOTE oversampling during training to improve minority-class recall and overall F1 score."
+                });
+            }
+        }
+
+        // R-03: Potential overfitting (near-perfect accuracy)
+        if (metrics?.Accuracy is not null && metrics.Accuracy > 0.98)
+        {
+            _recommendations.Add(new RecommendationItem
+            {
+                RuleId = "R-03",
+                Severity = RecommendationSeverity.Info,
+                Message = $"Near-perfect accuracy ({metrics.Accuracy:P1}) detected. This may indicate overfitting, especially on small datasets.",
+                Action = "Enable cross-validation (5-fold) during training to verify generalization performance."
+            });
+        }
+
+        // R-04: Low F1 score
+        if (metrics?.F1Score is not null && metrics.F1Score < 0.60)
+        {
+            _recommendations.Add(new RecommendationItem
+            {
+                RuleId = "R-04",
+                Severity = RecommendationSeverity.Critical,
+                Message = $"Low F1-score ({metrics.F1Score:F2}). The model is struggling with this configuration.",
+                Action = "Try feature scaling, switch to a different model (e.g., SVM with RBF kernel), increase training data, or tune hyperparameters."
+            });
+        }
+
+        // R-05: Low n_estimators for RandomForest
+        if (_experiment.ModelName.Contains("RandomForest", StringComparison.OrdinalIgnoreCase)
+            && hyperParams?.ContainsKey("n_estimators") == true)
+        {
+            if (int.TryParse(hyperParams["n_estimators"]?.ToString(), out var nEstimators) && nEstimators < 50)
+            {
+                _recommendations.Add(new RecommendationItem
+                {
+                    RuleId = "R-05",
+                    Severity = RecommendationSeverity.Info,
+                    Message = $"Low tree count ({nEstimators} estimators) detected for Random Forest.",
+                    Action = "Increase n_estimators to at least 100 for more stable and accurate predictions."
+                });
+            }
+        }
+
+        // R-06: Low accuracy overall
+        if (metrics?.Accuracy is not null && metrics.Accuracy < 0.50 && metrics.Accuracy > 0)
+        {
+            _recommendations.Add(new RecommendationItem
+            {
+                RuleId = "R-06",
+                Severity = RecommendationSeverity.Critical,
+                Message = $"Low accuracy ({metrics.Accuracy:P1}). The current model configuration is not performing well.",
+                Action = "Consider trying a different model family, performing feature engineering, or checking data quality issues."
+            });
+        }
+
+        // R-07: Small dataset
+        if (_datasetSummary is not null && _datasetSummary.RowCount < 500)
+        {
+            _recommendations.Add(new RecommendationItem
+            {
+                RuleId = "R-07",
+                Severity = RecommendationSeverity.Info,
+                Message = $"Small dataset detected ({_datasetSummary.RowCount} rows). Model accuracy may be unreliable.",
+                Action = "Collect more training data or use cross-validation to get more reliable performance estimates."
+            });
+        }
+
+        // R-08: SVM/KNN without scaling
+        if ((_experiment.ModelName.Contains("SVM", StringComparison.OrdinalIgnoreCase)
+            || _experiment.ModelName.Contains("KNN", StringComparison.OrdinalIgnoreCase)
+            || _experiment.ModelName.Contains("K-NN", StringComparison.OrdinalIgnoreCase))
+            && hyperParams?.ContainsKey("scaling") == true)
+        {
+            var scaling = hyperParams["scaling"]?.ToString() ?? "none";
+            if (scaling.Equals("none", StringComparison.OrdinalIgnoreCase))
+            {
+                _recommendations.Add(new RecommendationItem
+                {
+                    RuleId = "R-08",
+                    Severity = RecommendationSeverity.Warning,
+                    Message = $"{_experiment.ModelName} is sensitive to feature scale, but no scaling was applied.",
+                    Action = "Enable StandardScaler or MinMaxScaler preprocessing to improve model performance."
+                });
+            }
+        }
+
+        // R-09: Precision-Recall imbalance
+        if (metrics?.Precision is not null && metrics?.Recall is not null
+            && metrics.Precision > 0 && metrics.Recall > 0)
+        {
+            var diff = Math.Abs(metrics.Precision - metrics.Recall);
+            if (diff > 0.3)
+            {
+                var higher = metrics.Precision > metrics.Recall ? "precision" : "recall";
+                _recommendations.Add(new RecommendationItem
+                {
+                    RuleId = "R-09",
+                    Severity = RecommendationSeverity.Info,
+                    Message = $"Significant imbalance between precision ({metrics.Precision:F2}) and recall ({metrics.Recall:F2}). {higher} is much higher.",
+                    Action = "Adjust the decision threshold or use class weights to balance precision and recall for your use case."
+                });
+            }
+        }
+
+        // R-10: Training duration too short (possible underfitting)
+        if (_experiment.TrainingDurationSec is not null && _experiment.TrainingDurationSec < 1.0
+            && _datasetSummary is not null && _datasetSummary.RowCount > 1000)
+        {
+            _recommendations.Add(new RecommendationItem
+            {
+                RuleId = "R-10",
+                Severity = RecommendationSeverity.Info,
+                Message = $"Training completed in only {_experiment.TrainingDurationSec:F1}s for {_datasetSummary.RowCount:N0} rows.",
+                Action = "Consider using a more complex model or increasing max_iter / n_estimators for better learning."
+            });
+        }
+    }
+
+    private string GetSeverityClass(RecommendationSeverity severity) => severity switch
+    {
+        RecommendationSeverity.Critical => "critical",
+        RecommendationSeverity.Warning => "warning",
+        _ => "info"
+    };
+
+    private string GetSeverityLabel(RecommendationSeverity severity) => severity switch
+    {
+        RecommendationSeverity.Critical => "Critical",
+        RecommendationSeverity.Warning => "Warning",
+        _ => "Suggestion"
+    };
+
+    private sealed class RecommendationItem
+    {
+        public string RuleId { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string Action { get; set; } = string.Empty;
+        public RecommendationSeverity Severity { get; set; } = RecommendationSeverity.Info;
+    }
+
+    private enum RecommendationSeverity
+    {
+        Info,
+        Warning,
+        Critical
+    }
+}
+
+<style>
+    .page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--space-5);
+        margin-bottom: var(--space-6);
+        flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+        font-family: var(--font-ui);
+        font-size: 1.75rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-1);
+        color: var(--color-text);
+    }
+
+    .page-desc {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.9375rem;
+    }
+
+    .page-actions {
+        flex-shrink: 0;
+        display: flex;
+        gap: var(--space-2);
+    }
+
+    .rec-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+    }
+
+    .rec-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-5);
+        border-left: 3px solid var(--color-border);
+    }
+
+    .rec-card.critical {
+        border-left-color: var(--color-negative);
+    }
+
+    .rec-card.warning {
+        border-left-color: #D4A017;
+    }
+
+    .rec-card.info {
+        border-left-color: var(--color-text-secondary);
+    }
+
+    .rec-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        margin-bottom: var(--space-2);
+    }
+
+    .rec-badge {
+        display: inline-block;
+        padding: var(--space-1) var(--space-3);
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        border: 1px solid var(--color-border);
+    }
+
+    .rec-badge.critical {
+        border-color: var(--color-negative);
+        color: var(--color-negative);
+    }
+
+    .rec-badge.warning {
+        border-color: #D4A017;
+        color: #D4A017;
+    }
+
+    .rec-badge.info {
+        border-color: var(--color-text-secondary);
+        color: var(--color-text-secondary);
+    }
+
+    .rec-severity {
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .rec-severity.critical { color: var(--color-negative); }
+    .rec-severity.warning { color: #D4A017; }
+    .rec-severity.info { color: var(--color-text-secondary); }
+
+    .rec-message {
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        margin: 0 0 var(--space-3);
+        color: var(--color-text);
+    }
+
+    .rec-action {
+        display: flex;
+        gap: var(--space-2);
+        align-items: flex-start;
+        font-size: 0.875rem;
+        color: var(--color-text-secondary);
+        padding: var(--space-3) var(--space-4);
+        border: 1px solid var(--color-border);
+        background: var(--color-bg);
+    }
+
+    .rec-action-label {
+        font-weight: 500;
+        white-space: nowrap;
+        color: var(--color-text);
+    }
+
+    .quality-section {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-5);
+    }
+
+    .quality-section h3 {
+        font-family: var(--font-ui);
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-4);
+        color: var(--color-text);
+    }
+
+    .quality-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: var(--space-4);
+    }
+
+    .quality-card {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        border: 1px solid var(--color-border);
+        background: var(--color-bg);
+        padding: var(--space-4);
+    }
+
+    .quality-card.warn {
+        border-color: #D4A017;
+    }
+
+    .quality-label {
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 500;
+    }
+
+    .quality-value {
+        font-size: 1.25rem;
+        font-weight: 500;
+        color: var(--color-text);
+        font-family: var(--font-mono);
+    }
+
+    .quality-card.warn .quality-value {
+        color: #D4A017;
+    }
+
+    .alert {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.875rem;
+        border: 1px solid var(--color-border);
+    }
+
+    .alert p {
+        margin: 0;
+    }
+
+    .alert a {
+        color: var(--color-accent);
+        text-decoration: underline;
+    }
+
+    .alert-warning {
+        background: var(--color-bg);
+        color: var(--color-text);
+    }
+
+    .state-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-7) var(--space-5);
+        text-align: center;
+    }
+
+    .state-card.empty h3 {
+        font-family: var(--font-ui);
+        font-size: 1.125rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-2);
+        color: var(--color-text);
+    }
+
+    .state-text {
+        margin: 0;
+        color: var(--color-text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .state-card .button {
+        margin-top: var(--space-4);
+    }
+
+    @@media (max-width: 720px) {
+        .quality-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
