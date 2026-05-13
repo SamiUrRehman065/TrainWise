@@ -5,89 +5,121 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi)
 ![SQL Server](https://img.shields.io/badge/SQL%20Server-2022-CC2927?logo=microsoftsqlserver)
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 
 ## What is TrainWise
-TrainWise is a web-based platform for classical machine learning workflows. Users upload tabular datasets, configure preprocessing, select models, and train them without leaving the browser.
+TrainWise is a full-stack, web-based platform for classical machine learning workflows. It allows data scientists and students to upload tabular datasets, configure smart preprocessing steps, and train state-of-the-art models without leaving their browsers. 
 
-The system provides evaluation metrics, interactive charts, and rule-based recommendations to improve model quality. It is designed for local deployment and Final Year Project evaluation.
+Designed with a microservices architecture, it separates the heavy-lifting of Machine Learning (Python/FastAPI) from the enterprise-grade REST API (C#/.NET) and the interactive user interface (Blazor WebAssembly). It is the perfect tool for quickly establishing baselines, running rapid experiments, and comparing model feature importances visually.
 
-## Architecture Diagram
+## ✨ Key Features
+
+- 📂 **Smart Dataset Management**: Upload CSV/XLSX files with automatic deduplication (SHA-256 hash checking) and user-scoped storage management.
+- ⚙️ **Configurable Preprocessing**: Automatically handles null values (mean/median/mode), applies categorical encodings (One-hot/Factorize), drops high-cardinality noise, and applies SMOTE for imbalanced classes.
+- 🤖 **Multi-Model Training**: Train Logistic Regression, Decision Trees, Random Forests, XGBoost, and more with a single click.
+- 📊 **Interactive Analytics**: View confusion matrices, precision-recall graphs, and metrics formatted beautifully via Plotly.js integrations.
+- ⚖️ **Side-by-Side Comparison**: Deep-dive comparison UI for multiple experiments, calculating percentage differences and visual bar charts for feature importances.
+- 📦 **Data Export**: Export your models' hyperparameter configs and metrics seamlessly to JSON.
+
+## 🏗️ Architecture
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│                 FRONTEND LAYER                           │
+│         Blazor WebAssembly + Plotly.js                  │
+│  - User Registration & Login                            │
+│  - Dataset Upload & Management                          │
+│  - Interactive Training UI & Comparisons                │
+└────────────────────┬────────────────────────────────────┘
+                     │ HTTPS (dev: HTTP)
+                     ↓
+┌─────────────────────────────────────────────────────────┐
+│                 BACKEND API LAYER                        │
+│         ASP.NET Core 8 Web API + EF Core               │
+│  - Authentication & Authorization                       │
+│  - Dataset Deduplication & Archival                    │
+│  - Experiment Orchestration                            │
+└────────────────────┬────────────────────────────────────┘
+          │                          │
+    (REST API)              (Async Jobs)
+          │                          │
+          ↓                          ↓
+┌─────────────────────┐    ┌─────────────────────┐
+│   SQL SERVER 2022   │    │  PYTHON FASTAPI ML  │
+│   Local/Docker      │    │  Service            │
+│                     │    │  - Analysis         │
+│ Tables:             │    │  - Preprocessing    │
+│ - Users             │    │  - Training         │
+│ - Datasets          │    │  - Feature Weights  │
+│ - Experiments       │    │                     │
+└─────────────────────┘    └─────────────────────┘
 ```
-[Blazor WebAssembly]
-         |
-         v
-[ASP.NET Core API] <-> [SQL Server 2022]
-         |
-         v
-[FastAPI ML Service]
-```
 
-## Prerequisites
-- .NET SDK 8.0
-- Python 3.11
+## 🛠️ Prerequisites
+- [.NET SDK 8.0](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Python 3.11](https://www.python.org/downloads/)
 - SQL Server 2022 (LocalDB or Developer edition)
 - Git
-- Docker Desktop (optional, for containerized setup)
 
-## Quick Start
-1. Clone the repository.
-2. Create the SQL Server database using the schema script.
-3. Run the FastAPI ML service.
-4. Run the ASP.NET Core API.
-5. Run the Blazor WebAssembly frontend.
+## 🚀 Quick Start (Local Run)
 
-## Environment Variables
-| Variable | Description | Example |
-|---|---|---|
-| ConnectionStrings__DefaultConnection | SQL Server connection string | Server=localhost,1433;Database=TrainWiseDb;User Id=sa;Password=YourPass!;TrustServerCertificate=True |
-| MLService__BaseUrl | Base URL for FastAPI | http://localhost:8000 |
-| Auth__SessionTimeoutHours | Session expiry window | 8 |
-| Upload__MaxFileSizeMb | Upload size limit | 50 |
-| Upload__StoragePath | Dataset storage path | /data/uploads |
-| ASPNETCORE_URLS | API listener URLs | http://localhost:5000 |
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/TrainWise.git
+   cd TrainWise
+   ```
 
-## Project Structure
-```
-TrainWise/
-├── TrainWise.API/
-├── TrainWise.Web/
-├── TrainWise.MLService/
-├── TrainWise.Database/
-├── docs/
-├── docker/
-└── .github/
-```
+2. **Setup the Database**
+   Ensure SQL Server is running. The API is configured to use `.\SQLEXPRESS` by default. If using EF Core Migrations, run them against `TrainWise.API`.
 
-## API Reference
+3. **Start the ML Service**
+   ```bash
+   cd TrainWise.MLService
+   python -m venv .venv
+   source .venv/Scripts/activate # or .venv\Scripts\activate on Windows
+   pip install -r requirements.txt
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+4. **Start the .NET Web API**
+   ```bash
+   cd ../TrainWise.API
+   dotnet run
+   # Runs on http://localhost:5000
+   ```
+
+5. **Start the Blazor Frontend**
+   ```bash
+   cd ../TrainWise.Web
+   dotnet run
+   # Runs on http://localhost:5002
+   ```
+
+## 🔐 Environment Variables
+Configure these in the `appsettings.json` of your API project:
+
+| Variable | Description |
+|---|---|
+| `ConnectionStrings:DefaultConnection` | SQL Server connection string |
+| `MLService:BaseUrl` | Base URL for FastAPI (default: `http://localhost:8000`) |
+| `Upload:MaxFileSizeMb` | Upload size limit (default: `50`) |
+| `Upload:StorageMode` | Either `"disk"` or `"sql"` blob storage |
+
+## 📡 Core API Reference
+*(See `docs/api-contract.md` for the full list)*
+
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | /api/auth/login | Authenticate user |
-| POST | /api/dataset/upload | Upload dataset |
-| GET | /api/dataset/{id}/summary | Fetch analysis summary |
-| POST | /api/train | Train model |
-| GET | /api/experiment/{id} | Get experiment details |
-| GET | /api/experiment/history | List experiment history |
-| DELETE | /api/experiment/{id} | Delete experiment |
+| `POST` | `/api/auth/login` | Authenticate user |
+| `POST` | `/api/auth/signup` | Register user |
+| `POST` | `/api/dataset/upload` | Upload new dataset |
+| `POST` | `/api/training/train` | Execute ML training pipeline |
+| `GET` | `/api/experiments/compare` | Compare two models |
 
-## Known Limitations
-- No HTTPS enforcement in v1.0 (local deployment only)
-- Uploaded datasets are not encrypted at rest
-- Session tokens are stored in memory and lost on server restart
-- Initial Blazor WASM load time may be 3 to 5 seconds
-- SMOTE recommendations require manual user action
+## 🔮 Roadmap / Future Enhancements
+- **v1.1**: JWT authentication replacement for current session-based auth.
+- **v1.2**: Support for exporting PDF training reports.
+- **v2.0**: Advanced Cloud Deployment (Azure), SHAP explainability, and Model saving/serving for live inference.
 
-## Roadmap
-- JWT authentication and RBAC (v1.1)
-- Model artifact storage for inference (v1.1)
-- PDF report export (v1.2)
-- Auto model comparison leaderboard (v1.2)
-- SHAP explainability (v2.0)
-- Cloud deployment to Azure (v2.0)
-- Deep learning support (v2.0)
-- Unsupervised learning (v2.1)
-
-## Contributing
-Contributions are welcome. Please open an issue to discuss changes before submitting a PR.
-
-## License
-MIT License (placeholder)
+## 📄 License
+This project is licensed under the MIT License.
