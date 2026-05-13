@@ -34,6 +34,9 @@ public sealed class TrainingService : ITrainingService
             return null;
         }
 
+        // Pass the file path so ML service doesn't depend on its in-memory registry
+        request.FilePath = dataset.FilePath;
+
         var result = await _mlServiceClient.TrainAsync(request, cancellationToken);
         if (result is null)
         {

@@ -7,18 +7,18 @@
 <style>
   /* Homepage-specific utility classes (scoped to this component only) */
   .hp-mono { font-family: var(--mono, 'JetBrains Mono', monospace); }
-  .hp-tag { font-family: var(--mono, 'JetBrains Mono', monospace); font-size: 11px; font-weight: 500; color: var(--acc); letter-spacing: .08em; text-transform: uppercase; border: 1px solid rgba(200,255,0,.22); padding: 3px 8px; display: inline-block; }
+  .hp-tag { font-family: var(--mono, 'JetBrains Mono', monospace); font-size: 11px; font-weight: 500; color: var(--acc); letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--acc-b); padding: 3px 8px; display: inline-block; background: var(--acc-s); }
   .hp-sh { font-size: 34px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; position: relative; z-index: 1; }
-  .hp-btn-p { background: var(--acc); color: #080A0C; border: none; padding: 11px 22px; font-family: var(--sans, 'Syne', sans-serif); font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: .02em; transition: opacity .15s; }
+  .hp-btn-p { background: var(--acc); color: #FFFFFF; border: none; padding: 11px 22px; font-family: var(--sans, 'Syne', sans-serif); font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: .02em; transition: opacity .15s; }
   .hp-btn-p:hover { opacity: .85; }
   .hp-btn-g { background: transparent; color: var(--txt); border: 1px solid var(--brd); padding: 11px 22px; font-family: var(--sans, 'Syne', sans-serif); font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color .15s; }
-  .hp-btn-g:hover { border-color: rgba(200,255,0,.35); }
-  .hp-mc { border: 1px solid var(--brd); padding: 20px; background: var(--bg); transition: border-color .15s; }
-  .hp-mc:hover { border-color: rgba(200,255,0,.28); }
+  .hp-btn-g:hover { border-color: var(--acc-b); }
+  .hp-mc { border: 1px solid var(--brd); padding: 20px; background: var(--surf); transition: border-color .15s; }
+  .hp-mc:hover { border-color: var(--acc-b); }
   .hp-step-li { padding: 16px 20px; border-left: 2px solid var(--brd); cursor: pointer; transition: border-color .2s, background .2s; }
-  .hp-step-li.act { border-left-color: var(--acc); background: rgba(200,255,0,.03); }
+  .hp-step-li.act { border-left-color: var(--acc); background: var(--acc-s); }
   .hp-rule-row { border-bottom: 1px solid var(--brd); padding: 13px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; transition: background .12s; }
-  .hp-rule-row:hover { background: rgba(255,255,255,.02); }
+  .hp-rule-row:hover { background: rgba(0,0,0,.02); }
   .hp-feat-row { border-top: 1px solid var(--brd); padding: 28px 0; display: grid; grid-template-columns: 170px 1fr 190px; gap: 36px; align-items: start; }
   .hp-tick-wrap { overflow: hidden; border-top: 1px solid var(--brd); border-bottom: 1px solid var(--brd); }
   .hp-tick-inner { display: flex; animation: hp-tick 35s linear infinite; white-space: nowrap; }
@@ -73,7 +73,7 @@
       <div id="pipeline" style="display:flex;flex-direction:column;gap:2px;">
         @foreach (var (i, step) in _steps.Select((s, idx) => (idx, s)))
         {
-          <div class="hp-step-li @(_activeStep == i ? "act" : "")" @onclick="() => SetActiveStep(i)" style="@(_activeStep == i ? "border-left-color:var(--acc);background:rgba(200,255,0,.03);" : "")">
+          <div class="hp-step-li @(_activeStep == i ? "act" : "")" @onclick="() => SetActiveStep(i)" style="@(_activeStep == i ? "border-left-color:var(--acc);background:var(--acc-s);" : "")">
             <div style="display:flex;justify-content:space-between;align-items:center;@(_activeStep == i ? "margin-bottom:8px;" : "")">
               <div style="display:flex;align-items:center;gap:10px;">
                 <span class="hp-mono" style="font-size:11px;color:@(_activeStep == i ? "var(--acc)" : "var(--mut)");"> @step.Id</span>
@@ -126,7 +126,7 @@
     @foreach (var step in _steps)
     {
       <div style="background:var(--bg);padding:28px 20px;">
-        <div class="hp-mono" style="font-size:38px;font-weight:500;color:#2A3A4E;line-height:1;margin-bottom:14px;">@step.Id</div>
+        <div class="hp-mono" style="font-size:38px;font-weight:500;color:var(--snum);line-height:1;margin-bottom:14px;">@step.Id</div>
         <div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:10px;">@step.Title</div>
         <div style="font-size:12px;color:var(--mut);line-height:1.65;">@step.Desc</div>
       </div>
@@ -205,7 +205,7 @@
     @foreach (var model in _models)
     {
       <div class="hp-mc">
-        <div style="display:inline-block;font-size:9px;font-family:var(--mono);color:@(model.Type == "Classification" ? "var(--acc)" : "#4FC3F7");border:1px solid @(model.Type == "Classification" ? "rgba(200,255,0,.2)" : "rgba(79,195,247,.2)");padding:2px 7px;margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase;">@model.Type</div>
+        <div style="display:inline-block;font-size:9px;font-family:var(--mono);color:@(model.Type == "Classification" ? "var(--acc)" : "#185FA5");border:1px solid @(model.Type == "Classification" ? "var(--acc-b)" : "rgba(24,95,165,0.2)");padding:2px 7px;margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase;">@model.Type</div>
         <div style="font-size:14px;font-weight:700;margin-bottom:8px;letter-spacing:-.01em;">@model.Name</div>
         <div style="font-size:11px;color:var(--mut);font-family:var(--mono);">params: <span style="color:var(--mut);">@model.Params</span></div>
       </div>

@@ -62,7 +62,7 @@ else
                 <p class="state-text">Loading comparison data…</p>
             </div>
         }
-        else if (_experiment1 is not null && _experiment2 is not null)
+        else if (_fullExp1 is not null && _fullExp2 is not null && _experiment1 is not null && _experiment2 is not null)
         {
             <div class="compare-table-wrap">
                 <table class="compare-table">
@@ -85,18 +85,22 @@ else
                         </tr>
                     </thead>
                     <tbody>
+                        <!-- Basic Info -->
+                        <tr>
+                            <td colspan="4" class="section-header">Basic Information</td>
+                        </tr>
                         <tr>
                             <td>Training duration</td>
-                            <td>@(_experiment1.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</td>
-                            <td>@(_experiment2.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</td>
-                            <td class="@GetDifferenceClass(_experiment1.TrainingDurationSec, _experiment2.TrainingDurationSec, false)">
-                                @GetDifference(_experiment1.TrainingDurationSec, _experiment2.TrainingDurationSec, false)
+                            <td>@(_fullExp1.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</td>
+                            <td>@(_fullExp2.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</td>
+                            <td class="@GetDifferenceClass(_fullExp1.TrainingDurationSec, _fullExp2.TrainingDurationSec, false)">
+                                @GetDifference(_fullExp1.TrainingDurationSec, _fullExp2.TrainingDurationSec, false)
                             </td>
                         </tr>
                         <tr>
                             <td>Created</td>
-                            <td>@_experiment1.CreatedAt.ToString("MMM dd, yyyy")</td>
-                            <td>@_experiment2.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td>@_fullExp1.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td>@_fullExp2.CreatedAt.ToString("MMM dd, yyyy")</td>
                             <td>-</td>
                         </tr>
                         <tr>
@@ -105,6 +109,139 @@ else
                             <td>@_experiment2.DatasetName</td>
                             <td>-</td>
                         </tr>
+
+                        <!-- Metrics -->
+                        <tr>
+                            <td colspan="4" class="section-header">Metrics</td>
+                        </tr>
+                        @if (_fullExp1.TaskType.ToLower() == "classification" && _fullExp2.TaskType.ToLower() == "classification" &&
+                             _fullExp1.Result?.ClassificationMetrics != null && _fullExp2.Result?.ClassificationMetrics != null)
+                        {
+                            <tr>
+                                <td>Accuracy</td>
+                                <td>@_fullExp1.Result.ClassificationMetrics.Accuracy.ToString("P1")</td>
+                                <td>@_fullExp2.Result.ClassificationMetrics.Accuracy.ToString("P1")</td>
+                                <td class="@GetDifferenceClass(_fullExp1.Result.ClassificationMetrics.Accuracy, _fullExp2.Result.ClassificationMetrics.Accuracy, true)">
+                                    @GetDifferencePct(_fullExp1.Result.ClassificationMetrics.Accuracy, _fullExp2.Result.ClassificationMetrics.Accuracy, true)
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Precision</td>
+                                <td>@_fullExp1.Result.ClassificationMetrics.Precision.ToString("P1")</td>
+                                <td>@_fullExp2.Result.ClassificationMetrics.Precision.ToString("P1")</td>
+                                <td class="@GetDifferenceClass(_fullExp1.Result.ClassificationMetrics.Precision, _fullExp2.Result.ClassificationMetrics.Precision, true)">
+                                    @GetDifferencePct(_fullExp1.Result.ClassificationMetrics.Precision, _fullExp2.Result.ClassificationMetrics.Precision, true)
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Recall</td>
+                                <td>@_fullExp1.Result.ClassificationMetrics.Recall.ToString("P1")</td>
+                                <td>@_fullExp2.Result.ClassificationMetrics.Recall.ToString("P1")</td>
+                                <td class="@GetDifferenceClass(_fullExp1.Result.ClassificationMetrics.Recall, _fullExp2.Result.ClassificationMetrics.Recall, true)">
+                                    @GetDifferencePct(_fullExp1.Result.ClassificationMetrics.Recall, _fullExp2.Result.ClassificationMetrics.Recall, true)
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>F1 Score</td>
+                                <td>@_fullExp1.Result.ClassificationMetrics.F1Score.ToString("P1")</td>
+                                <td>@_fullExp2.Result.ClassificationMetrics.F1Score.ToString("P1")</td>
+                                <td class="@GetDifferenceClass(_fullExp1.Result.ClassificationMetrics.F1Score, _fullExp2.Result.ClassificationMetrics.F1Score, true)">
+                                    @GetDifferencePct(_fullExp1.Result.ClassificationMetrics.F1Score, _fullExp2.Result.ClassificationMetrics.F1Score, true)
+                                </td>
+                            </tr>
+                        }
+                        else if (_fullExp1.TaskType.ToLower() == "regression" && _fullExp2.TaskType.ToLower() == "regression" &&
+                                 _fullExp1.Result?.RegressionMetrics != null && _fullExp2.Result?.RegressionMetrics != null)
+                        {
+                            <tr>
+                                <td>R2 Score</td>
+                                <td>@_fullExp1.Result.RegressionMetrics.R2Score.ToString("0.000")</td>
+                                <td>@_fullExp2.Result.RegressionMetrics.R2Score.ToString("0.000")</td>
+                                <td class="@GetDifferenceClass(_fullExp1.Result.RegressionMetrics.R2Score, _fullExp2.Result.RegressionMetrics.R2Score, true)">
+                                    @GetDifference(_fullExp1.Result.RegressionMetrics.R2Score, _fullExp2.Result.RegressionMetrics.R2Score, true)
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>RMSE</td>
+                                <td>@_fullExp1.Result.RegressionMetrics.Rmse.ToString("0.000")</td>
+                                <td>@_fullExp2.Result.RegressionMetrics.Rmse.ToString("0.000")</td>
+                                <td class="@GetDifferenceClass(_fullExp1.Result.RegressionMetrics.Rmse, _fullExp2.Result.RegressionMetrics.Rmse, false)">
+                                    @GetDifference(_fullExp1.Result.RegressionMetrics.Rmse, _fullExp2.Result.RegressionMetrics.Rmse, false)
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>MAE</td>
+                                <td>@_fullExp1.Result.RegressionMetrics.Mae.ToString("0.000")</td>
+                                <td>@_fullExp2.Result.RegressionMetrics.Mae.ToString("0.000")</td>
+                                <td class="@GetDifferenceClass(_fullExp1.Result.RegressionMetrics.Mae, _fullExp2.Result.RegressionMetrics.Mae, false)">
+                                    @GetDifference(_fullExp1.Result.RegressionMetrics.Mae, _fullExp2.Result.RegressionMetrics.Mae, false)
+                                </td>
+                            </tr>
+                        }
+
+                        <!-- Hyperparameters -->
+                        @if (_fullExp1.HyperParameters != null || _fullExp2.HyperParameters != null)
+                        {
+                            <tr>
+                                <td colspan="4" class="section-header">Hyperparameters</td>
+                            </tr>
+                            @foreach (var key in GetAllKeys(_fullExp1.HyperParameters, _fullExp2.HyperParameters))
+                            {
+                                var val1 = _fullExp1.HyperParameters?.GetValueOrDefault(key)?.ToString() ?? "-";
+                                var val2 = _fullExp2.HyperParameters?.GetValueOrDefault(key)?.ToString() ?? "-";
+                                <tr>
+                                    <td>@key</td>
+                                    <td>@val1</td>
+                                    <td>@val2</td>
+                                    <td>-</td>
+                                </tr>
+                            }
+                        }
+
+                        <!-- Feature Importances -->
+                        @if (_fullExp1.Result?.FeatureImportances != null || _fullExp2.Result?.FeatureImportances != null)
+                        {
+                            <tr>
+                                <td colspan="4" class="section-header">Feature Importances</td>
+                            </tr>
+                            @foreach (var feature in GetAllFeatures(_fullExp1.Result?.FeatureImportances, _fullExp2.Result?.FeatureImportances))
+                            {
+                                var val1 = _fullExp1.Result?.FeatureImportances?.GetValueOrDefault(feature);
+                                var val2 = _fullExp2.Result?.FeatureImportances?.GetValueOrDefault(feature);
+                                <tr>
+                                    <td>@feature</td>
+                                    <td>
+                                        @if (val1.HasValue)
+                                        {
+                                            <div class="feature-bar-wrap">
+                                                <span style="width: 45px; display: inline-block;">@val1.Value.ToString("P1")</span>
+                                                <div class="feature-bar model1" style="width: @((val1.Value * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (val2.HasValue)
+                                        {
+                                            <div class="feature-bar-wrap">
+                                                <span style="width: 45px; display: inline-block;">@val2.Value.ToString("P1")</span>
+                                                <div class="feature-bar model2" style="width: @((val2.Value * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+                                    <td class="@GetDifferenceClass(val1, val2, true)">
+                                        @GetDifferencePct(val1, val2, true)
+                                    </td>
+                                </tr>
+                            }
+                        }
                     </tbody>
                 </table>
             </div>
@@ -121,6 +258,8 @@ else
     private List<TrainingHistoryItem>? _experiments;
     private TrainingHistoryItem? _experiment1;
     private TrainingHistoryItem? _experiment2;
+    private TrainWise.Web.Models.ExperimentDetail? _fullExp1;
+    private TrainWise.Web.Models.ExperimentDetail? _fullExp2;
     private string? _exp1Id;
     private string? _exp2Id;
     private bool _isComparing = false;
@@ -164,6 +303,17 @@ else
     {
         _isComparing = true;
         OnExperimentSelected();
+
+        if (_experiment1 != null)
+        {
+            _fullExp1 = await ExperimentApi.GetAsync(_experiment1.ExperimentId);
+        }
+
+        if (_experiment2 != null)
+        {
+            _fullExp2 = await ExperimentApi.GetAsync(_experiment2.ExperimentId);
+        }
+
         _isComparing = false;
     }
 
@@ -173,8 +323,8 @@ else
 
         var comparison = new
         {
-            Experiment1 = _experiment1,
-            Experiment2 = _experiment2,
+            Experiment1 = _fullExp1 ?? (object)_experiment1,
+            Experiment2 = _fullExp2 ?? (object)_experiment2,
             ComparedAt = DateTime.UtcNow
         };
 
@@ -197,7 +347,30 @@ else
     {
         if (val1 == null || val2 == null) return "-";
         var diff = val2.Value - val1.Value;
-        return diff > 0 ? $"+{diff:0.0}" : $"{diff:0.0}";
+        return diff > 0 ? $"+{diff:0.000}" : $"{diff:0.000}";
+    }
+
+    private string GetDifferencePct(double? val1, double? val2, bool higherIsBetter)
+    {
+        if (val1 == null || val2 == null) return "-";
+        var diff = val2.Value - val1.Value;
+        return diff > 0 ? $"+{diff:P1}" : $"{diff:P1}";
+    }
+
+    private IEnumerable<string> GetAllKeys(Dictionary<string, object>? dict1, Dictionary<string, object>? dict2)
+    {
+        var keys = new HashSet<string>();
+        if (dict1 != null) keys.UnionWith(dict1.Keys);
+        if (dict2 != null) keys.UnionWith(dict2.Keys);
+        return keys.OrderBy(k => k);
+    }
+
+    private IEnumerable<string> GetAllFeatures(Dictionary<string, double>? dict1, Dictionary<string, double>? dict2)
+    {
+        var features = new HashSet<string>();
+        if (dict1 != null) features.UnionWith(dict1.Keys);
+        if (dict2 != null) features.UnionWith(dict2.Keys);
+        return features.OrderBy(f => f);
     }
 }
 
@@ -301,6 +474,17 @@ else
         color: var(--color-text-secondary);
     }
 
+    .section-header {
+        background: var(--color-bg);
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        padding-top: var(--space-4) !important;
+        padding-bottom: var(--space-2) !important;
+    }
+
     .exp-head {
         display: flex;
         flex-direction: column;
@@ -323,6 +507,11 @@ else
     .compare-table td {
         padding: var(--space-3) var(--space-4);
         border-bottom: 1px solid var(--color-border);
+        transition: background-color 0.2s ease;
+    }
+
+    .compare-table tbody tr:hover td {
+        background-color: var(--color-bg);
     }
 
     .compare-table tbody tr:last-child td {
@@ -337,6 +526,29 @@ else
     .diff-negative {
         color: var(--color-negative);
         font-weight: 500;
+    }
+
+    .feature-bar-wrap {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        width: 100%;
+        max-width: 200px;
+    }
+    
+    .feature-bar {
+        height: 6px;
+        border-radius: 3px;
+        min-width: 2px;
+        transition: width 0.5s ease-out;
+    }
+
+    .feature-bar.model1 {
+        background: var(--color-accent);
+    }
+
+    .feature-bar.model2 {
+        background: var(--color-success, #10b981);
     }
 
     .compare-actions {

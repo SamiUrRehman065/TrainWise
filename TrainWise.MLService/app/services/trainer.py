@@ -21,15 +21,18 @@ from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
 
 from app.models.train_request import TrainRequest
 from app.models.train_result import TrainResult, ClassificationMetrics, RegressionMetrics
-from app.services.analyzer import analyze_dataset, get_dataset_path, load_dataframe
+from app.services.analyzer import analyze_dataset, get_dataset_path, load_dataframe, register_dataset
 from app.services.model_factory import ModelFactory
 from app.services.recommendation_engine import RecommendationEngine
 
 
 def train_model(request: TrainRequest) -> TrainResult:
-    file_path = get_dataset_path(request.datasetId)
+    file_path = request.filePath or get_dataset_path(request.datasetId)
     if not file_path:
         raise ValueError("Dataset path not found. Please analyze the dataset first.")
+
+    # Register so post-train analysis calls can also find it
+    register_dataset(request.datasetId, file_path)
 
     df = load_dataframe(file_path)
     if request.targetColumn not in df.columns:
@@ -146,14 +149,32 @@ def _fill_mode(series: pd.Series) -> pd.Series:
 
 
 def _encode_categoricals(df: pd.DataFrame, encoding: str) -> pd.DataFrame:
-    categorical_cols = [col for col in df.columns if df[col].dtype == object]
+    categorical_cols = [col for col in df.columns if df[col].dtype == object or df[col].dtype.name == 'category']
     if not categorical_cols:
         return df
 
-    if encoding == "onehot":
-        return pd.get_dummies(df, columns=categorical_cols)
-
     result = df.copy()
+    
+    # Automatically drop identifiers/names and high-cardinality features
+    cols_to_drop = []
+    n_rows = len(result)
+    for col in categorical_cols:
+        n_unique = result[col].nunique()
+        col_lower = col.lower()
+        # Drop if it's an ID or Name column, or if it has >50 unique values (high cardinality)
+        if "id" in col_lower or "name" in col_lower or n_unique > 50:
+            cols_to_drop.append(col)
+            
+    if cols_to_drop:
+        result = result.drop(columns=cols_to_drop)
+        categorical_cols = [c for c in categorical_cols if c not in cols_to_drop]
+
+    if not categorical_cols:
+        return result
+
+    if encoding == "onehot":
+        return pd.get_dummies(result, columns=categorical_cols)
+
     for col in categorical_cols:
         result[col] = pd.factorize(result[col])[0]
     return result
@@ -181,10 +202,20 @@ def _build_hyperparameters(request: TrainRequest) -> Dict[str, Any]:
 
 
 def _extract_feature_importances(model: Any, columns: list[str]) -> Dict[str, float] | None:
-    if not hasattr(model, "feature_importances_"):
-        return None
-    values = getattr(model, "feature_importances_")
-    return {column: float(value) for column, value in zip(columns, values)}
+    if hasattr(model, "feature_importances_"):
+        values = getattr(model, "feature_importances_")
+        return {column: float(value) for column, value in zip(columns, values)}
+    elif hasattr(model, "coef_"):
+        coefs = getattr(model, "coef_")
+        if getattr(coefs, "ndim", 1) == 2:
+            values = np.abs(coefs).mean(axis=0)
+        else:
+            values = np.abs(coefs)
+        total = np.sum(values)
+        if total > 0:
+            values = values / total
+        return {column: float(value) for column, value in zip(columns, values)}
+    return None
 
 
 def _build_result(

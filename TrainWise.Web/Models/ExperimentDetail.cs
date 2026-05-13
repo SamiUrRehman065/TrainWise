@@ -72,6 +72,28 @@ public sealed class ExperimentDetail
         }
     }
 
+    /// <summary>
+    /// Deserialized from MetricsJson into full TrainResult for easy access.
+    /// </summary>
+    public TrainResult? Result
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(MetricsJson))
+                return null;
+            try
+            {
+                return JsonSerializer.Deserialize<TrainResult>(
+                    MetricsJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
     // These are populated from the experiment list context, not from the detail endpoint
     public string DatasetName { get; set; } = string.Empty;
 }

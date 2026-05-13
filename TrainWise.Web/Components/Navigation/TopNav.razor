@@ -140,11 +140,10 @@
         position: sticky;
         top: 0;
         z-index: 1000;
-        background: linear-gradient(180deg, rgba(8,10,12,.92), rgba(8,10,12,.82));
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(200, 255, 0, 0.12);
-        box-shadow: 0 6px 24px rgba(0,0,0,.22);
+        background: rgba(247,245,240,0.94);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--brd);
     }
 
     .topnav-inner {
@@ -174,14 +173,13 @@
         justify-content: center;
         width: 32px;
         height: 32px;
-        background: linear-gradient(135deg, #C8FF00, #8CFF6C);
-        color: var(--bg);
+        background: var(--acc);
+        color: #FFFFFF;
         font-family: var(--mono);
         font-size: 11px;
         font-weight: 700;
         letter-spacing: -0.5px;
-        border-radius: 10px;
-        box-shadow: 0 8px 20px rgba(140,255,108,.25);
+        border-radius: 8px;
     }
 
     .brand-text {
@@ -224,8 +222,8 @@
         color: var(--mut);
         text-decoration: none;
         border: 1px solid transparent;
-        border-radius: 10px;
-        transition: color .15s ease, border-color .15s ease, background .15s ease, transform .15s ease;
+        border-radius: 8px;
+        transition: color .15s, border-color .15s, background .15s;
     }
 
     .topnav-link svg {
@@ -235,9 +233,8 @@
     .topnav-link:hover {
         color: var(--txt);
         text-decoration: none;
-        border-color: rgba(200,255,0,.20);
-        background: rgba(200,255,0,.05);
-        transform: translateY(-1px);
+        border-color: var(--acc-b);
+        background: var(--acc-s);
     }
 
     .topnav-link:hover svg {
@@ -246,8 +243,8 @@
 
     .topnav-link.active {
         color: var(--acc);
-        border-color: rgba(200,255,0,.34);
-        background: rgba(200,255,0,.08);
+        border-color: var(--acc-b);
+        background: var(--acc-s);
     }
 
     .topnav-link.active svg {
@@ -287,7 +284,8 @@
         justify-content: center;
         width: 26px;
         height: 26px;
-        background: var(--brd);
+        background: var(--acc-s);
+        border: 1px solid var(--acc-b);
         color: var(--acc);
         font-size: 12px;
         font-weight: 700;
@@ -308,6 +306,7 @@
         border: 1px solid var(--brd);
         padding: var(--space-1) 0;
         z-index: 100;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         animation: dropIn 0.12s ease-out;
     }
 
@@ -331,7 +330,7 @@
     }
 
     .dropdown-item:hover {
-        background: var(--brd);
+        background: var(--bg);
         text-decoration: none;
     }
 

@@ -35,3 +35,4 @@ class TrainRequest(BaseModel):
     model: ModelConfig
     trainTestSplit: float = 0.8
     crossValidation: bool = False
+    filePath: Optional[str] = None
