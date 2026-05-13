@@ -28,6 +28,18 @@ public sealed class MLServiceClient : IMLServiceClient
         return await response.Content.ReadFromJsonAsync<DatasetSummaryDto>(cancellationToken: cancellationToken);
     }
 
+    public async Task<EdaReportDto?> EdaAsync(Guid datasetId, string? targetColumn, CancellationToken cancellationToken)
+    {
+        var payload = new { datasetId, targetColumn };
+        var response = await _httpClient.PostAsJsonAsync("/eda", payload, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<EdaReportDto>(cancellationToken: cancellationToken);
+    }
+
     public async Task<TrainResultDto?> TrainAsync(TrainRequest request, CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsJsonAsync("/train", request, cancellationToken);

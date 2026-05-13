@@ -55,9 +55,11 @@ else
         align-items: center;
         gap: var(--space-3);
         padding: var(--space-5) var(--space-6);
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
+        border: 1px solid rgba(200,255,0,.2);
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(15,18,22,.95), rgba(10,14,18,.92));
         color: var(--color-text-secondary);
+        box-shadow: 0 14px 38px rgba(0,0,0,.3);
     }
 
     .loading-text {
@@ -68,9 +70,11 @@ else
         max-width: var(--content-max);
         margin: var(--space-7) auto 0;
         padding: var(--space-5) var(--space-5);
-        border-top: 1px solid var(--color-border);
+        border-top: 1px solid rgba(200,255,0,.16);
         color: var(--color-text-secondary);
         font-size: 13px;
         text-align: center;
+        background: linear-gradient(180deg, rgba(200,255,0,0.03), transparent);
+        border-radius: 12px 12px 0 0;
     }
 </style>
