@@ -35,7 +35,19 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        var isPasswordValid = false;
+        try
+        {
+            isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        }
+        catch (Exception)
+        {
+            // Handles legacy/plaintext or malformed hashes without throwing 500.
+            // Login should fail gracefully as unauthorized instead.
+            isPasswordValid = false;
+        }
+
+        if (!isPasswordValid)
         {
             return null;
         }
