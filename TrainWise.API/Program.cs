@@ -43,13 +43,33 @@ builder.Services.AddCors(options =>
             .GetSection("Cors:AllowedOrigins")
             .Get<string[]>() ?? Array.Empty<string>();
 
-        if (allowedOrigins.Length == 0)
+        var isDevelopment = builder.Environment.IsDevelopment();
+        if (!isDevelopment && allowedOrigins.Length == 0)
         {
-            throw new InvalidOperationException("Cors:AllowedOrigins must contain at least one origin.");
+            throw new InvalidOperationException("Cors:AllowedOrigins must contain at least one origin in non-development environments.");
         }
 
-        policy.WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins);
+        }
+
+        if (isDevelopment)
+        {
+            policy.SetIsOriginAllowed(origin =>
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.Scheme is "http" or "https"
+                       && (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                           || uri.Host.Equals("127.0.0.1"));
+            });
+        }
+
+        policy.AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
     });
