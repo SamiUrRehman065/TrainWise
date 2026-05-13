@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Mvc;
 
 namespace TrainWise.API.Middleware;
@@ -52,6 +53,13 @@ public sealed class ExceptionHandlingMiddleware
             await WriteErrorAsync(context, HttpStatusCode.GatewayTimeout,
                 "Request timeout",
                 "The operation timed out. For large datasets, try reducing the number of rows.");
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogError(ex, "Database connectivity error");
+            await WriteErrorAsync(context, HttpStatusCode.ServiceUnavailable,
+                "Database unavailable",
+                "The database is not reachable. Please verify SQL Server instance/service, connection string, and network settings.");
         }
         catch (Exception ex)
         {
