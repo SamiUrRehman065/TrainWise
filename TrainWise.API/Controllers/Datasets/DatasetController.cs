@@ -70,6 +70,28 @@ public sealed class DatasetController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("{id:guid}/eda")]
+    public async Task<ActionResult<EdaReportDto>> GetEdaAsync(
+        Guid id,
+        [FromQuery] string? targetColumn,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var eda = await _datasetService.GetEdaAsync(id, userId.Value, targetColumn, cancellationToken);
+        if (eda is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(eda);
+    }
+
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
