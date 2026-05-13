@@ -105,6 +105,7 @@ public sealed class DatasetManagementController : ControllerBase
             try
             {
                 await _storageService.DeleteAsync(dataset.DatasetId, cancellationToken);
+                _dbContext.Datasets.Remove(dataset);
                 archived++;
                 _logger.LogInformation("Archived dataset {DatasetId} for user {UserId}", dataset.DatasetId, userId);
             }
@@ -112,6 +113,11 @@ public sealed class DatasetManagementController : ControllerBase
             {
                 _logger.LogError(ex, "Failed to archive dataset {DatasetId}", dataset.DatasetId);
             }
+        }
+
+        if (archived > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         return Ok(new ArchiveResponse
