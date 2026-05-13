@@ -8,7 +8,7 @@
 
 TrainWise project has **successfully completed all core requirements** from the SRS and sprint plan. The platform is fully functional and operational with three tiers running cleanly. Beyond the MVP, we have added advanced dataset management features (deduplication, storage flexibility, archival) and established a roadmap for future enhancements.
 
-**Current Status:** ✅ **PRODUCTION READY** (local deployment)
+**Current Status:** ✅ **MVP Complete** (local deployment)
 
 ---
 
