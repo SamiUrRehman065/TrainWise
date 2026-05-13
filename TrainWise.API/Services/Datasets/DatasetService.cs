@@ -90,22 +90,43 @@ public sealed class DatasetService : IDatasetService
         _dbContext.Datasets.Add(dataset);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var summary = await _mlServiceClient.AnalyzeAsync(filePath, datasetId, cancellationToken);
-        if (summary is not null)
+        try
         {
-            dataset.AnalysisSummaryJson = JsonSerializer.Serialize(summary);
-            dataset.RowCount = summary.RowCount;
-            dataset.ColumnCount = summary.ColumnCount;
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
+            var summary = await _mlServiceClient.AnalyzeAsync(filePath, datasetId, cancellationToken);
+            if (summary is not null)
+            {
+                dataset.AnalysisSummaryJson = JsonSerializer.Serialize(summary);
+                dataset.RowCount = summary.RowCount;
+                dataset.ColumnCount = summary.ColumnCount;
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
 
-        return new DatasetUploadResponse
+            return new DatasetUploadResponse
+            {
+                DatasetId = datasetId,
+                FileName = sanitizedFileName,
+                RowCount = summary?.RowCount ?? dataset.RowCount,
+                IsDuplicate = false
+            };
+        }
+        catch
         {
-            DatasetId = datasetId,
-            FileName = sanitizedFileName,
-            RowCount = summary?.RowCount ?? dataset.RowCount,
-            IsDuplicate = false
-        };
+            _dbContext.Datasets.Remove(dataset);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            var datasetDirectoryCleanup = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrWhiteSpace(datasetDirectoryCleanup) && Directory.Exists(datasetDirectoryCleanup))
+            {
+                try
+                {
+                    Directory.Delete(datasetDirectoryCleanup, true);
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+
+            throw;
+        }
     }
 
     public async Task<DatasetListDto> GetAllAsync(Guid userId, CancellationToken cancellationToken)
@@ -114,6 +135,15 @@ public sealed class DatasetService : IDatasetService
             .AsNoTracking()
             .Where(d => d.UserId == userId)
             .OrderByDescending(d => d.UploadedAt)
+            .Select(d => new
+            {
+                d.DatasetId,
+                d.FileName,
+                d.RowCount,
+                d.ColumnCount,
+                d.UploadedAt,
+                d.FilePath
+            })
             .ToListAsync(cancellationToken);
 
         var items = datasets.Select(d =>
