@@ -5,106 +5,129 @@
 @inject NavigationManager NavManager
 @using TrainWise.Web.Components.Common
 
+<div class="upload-page">
+    <section class="tw-section-header animate-fade-up">
+        <h1 class="text-gradient">Upload Dataset</h1>
+        <p class="subtitle">Prepare your data for training. We support standard tabular formats up to 50MB.</p>
+    </section>
 
-<div class="page-header">
-    <h1>Upload dataset</h1>
-    <p class="page-desc">Upload a CSV or XLSX file (up to 50 MB) for training.</p>
-</div>
-
-<div class="upload-layout">
-    <div class="upload-main">
-        <div class="upload-card">
-            <div class="dropzone" @ondragover="() => { }" @ondrop="OnDrop">
-                <p class="dropzone-label">Drop file here or click to browse</p>
-                <InputFile OnChange="OnFileSelected" />
-            </div>
-
-            @if (_file is not null)
-            {
-                <div class="file-info">
-                    <div class="file-details">
-                        <span class="file-label">File:</span>
-                        <span class="file-name">@_file.Name</span>
-                    </div>
-                    <div class="file-details">
-                        <span class="file-label">Size:</span>
-                        <span class="file-size">@FormatSize(_file.Size)</span>
-                    </div>
-                    <button class="button ghost" @onclick="ClearFile">Remove</button>
-                </div>
-            }
-
-            <div class="upload-actions">
-                <button class="button primary" @onclick="UploadAsync" disabled="@(_file is null || _isUploading)">
-                    @if (_isUploading)
-                    {
-                        <span>Uploading…</span>
-                    }
-                    else
-                    {
-                        <span>Upload file</span>
-                    }
-                </button>
-                <a href="/datasets" class="button ghost">All datasets</a>
-            </div>
-
-            @if (_response is not null)
-            {
-                <div class="upload-result">
-                    <p class="result-title">Upload completed</p>
-                    <div class="result-details">
-                        <div class="result-row">
-                            <span class="result-label">File:</span>
-                            <span class="result-value">@_response.FileName</span>
+    <div class="upload-grid">
+        <div class="upload-main animate-fade-up">
+            <div class="tw-card main-upload-card">
+                <div class="premium-dropzone @(_file != null ? "has-file" : "")">
+                    <div class="dropzone-content">
+                        <div class="dropzone-icon">
+                            @if (_file != null)
+                            {
+                                <span>📄</span>
+                            }
+                            else
+                            {
+                                <span>☁️</span>
+                            }
                         </div>
-                        <div class="result-row">
-                            <span class="result-label">Dataset ID:</span>
-                            <span class="result-value mono">@_response.DatasetId</span>
+                        <p class="dropzone-text">
+                            @if (_file != null)
+                            {
+                                <span class="file-ready">@_file.Name</span>
+                                <span class="file-size-tag">@FormatSize(_file.Size)</span>
+                            }
+                            else
+                            {
+                                <span class="primary-text">Drag and drop your file here</span>
+                                <span class="secondary-text">or click to browse local files</span>
+                            }
+                        </p>
+                    </div>
+                    <InputFile OnChange="OnFileSelected" class="file-input-overlay" />
+                </div>
+
+                <div class="upload-controls">
+                    <div class="actions-left">
+                        @if (_file != null)
+                        {
+                            <button class="tw-btn-ghost btn-sm" @onclick="ClearFile">Remove File</button>
+                        }
+                    </div>
+                    <div class="actions-right">
+                        <button class="tw-btn-primary" @onclick="UploadAsync" disabled="@(_file is null || _isUploading)">
+                            @if (_isUploading)
+                            {
+                                <span class="spinner-inline"></span>
+                                <span>Uploading Dataset...</span>
+                            }
+                            else
+                            {
+                                <span>🚀 Start Upload</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+
+                @if (_response is not null)
+                {
+                    <div class="tw-card result-panel animate-fade-up">
+                        <div class="result-header">
+                            <span class="tw-badge success">Upload Successful</span>
+                            <h3>@_response.FileName</h3>
+                        </div>
+                        
+                        <div class="result-stats">
+                            <div class="res-stat">
+                                <label>Dataset ID</label>
+                                <code class="tw-mono">@_response.DatasetId</code>
+                            </div>
+                            @if (_response.IsDuplicate)
+                            {
+                                <div class="res-stat">
+                                    <span class="tw-badge warning">Duplicate detected — reusing existing record</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="result-actions">
+                            <button class="tw-btn-primary btn-full" @onclick='() => NavManager.NavigateTo($"/datasets/{_response.DatasetId}")'>
+                                Analyze Data →
+                            </button>
+                            <button class="tw-btn-ghost btn-full" @onclick='() => NavManager.NavigateTo($"/datasets/{_response.DatasetId}?runEda=true")'>
+                                Quick EDA
+                            </button>
                         </div>
                     </div>
-                    @if (_response.IsDuplicate)
-                    {
-                        <p class="result-duplicate">Duplicate detected — existing dataset reused.</p>
-                    }
-                    <div class="result-actions">
-                        <a href="@($"/datasets/{_response.DatasetId}")" class="button primary">View dataset</a>
-                        <a href="@($"/datasets/{_response.DatasetId}?runEda=true")" class="button ghost">Run EDA now</a>
-                    </div>
-                </div>
-            }
+                }
 
-            @if (!string.IsNullOrWhiteSpace(_message))
-            {
-                <div class="alert alert-@(_messageType)">
-                    @_message
-                </div>
-            }
+                @if (!string.IsNullOrWhiteSpace(_message))
+                {
+                    <div class="message-container animate-fade-up">
+                        <span class="tw-badge @(_messageType == "success" ? "success" : "danger") full-width">
+                            @_message
+                        </span>
+                    </div>
+                }
+            </div>
         </div>
+
+        <aside class="upload-sidebar animate-fade-up" style="animation-delay: 0.1s;">
+            <div class="tw-card sidebar-card">
+                <h3>Supported Formats</h3>
+                <div class="badge-list">
+                    <span class="tw-badge info">CSV</span>
+                    <span class="tw-badge info">XLSX (Excel)</span>
+                </div>
+                <p class="sidebar-note">Maximum file size: <strong>50 MB</strong></p>
+            </div>
+
+            <div class="tw-card sidebar-card">
+                <h3>Upload Tips</h3>
+                <ul class="tips-list">
+                    <li>Include descriptive column headers in the first row.</li>
+                    <li>Ensure numerical columns contain only numbers.</li>
+                    <li>Clean null values or choose a strategy in the next step.</li>
+                    <li>Remove identifier columns (IDs, Names) to avoid overfitting.</li>
+                </ul>
+            </div>
+        </aside>
     </div>
-
-    <aside class="upload-sidebar">
-        <div class="sidebar-section">
-            <h4>Supported formats</h4>
-            <ul>
-                <li><strong>CSV</strong> — comma-separated values</li>
-                <li><strong>XLSX</strong> — Excel workbook</li>
-            </ul>
-        </div>
-        <div class="sidebar-section">
-            <h4>Limits</h4>
-            <ul>
-                <li>Maximum file size: <strong>50 MB</strong></li>
-            </ul>
-        </div>
-        <div class="sidebar-section">
-            <h4>Tips</h4>
-            <ul>
-                <li>First row must contain column headers</li>
-                <li>Remove index columns before uploading</li>
-                <li>For classification, target column must have discrete values</li>
-            </ul>
-        </div>
-    </aside>
 </div>
 
 @code {
@@ -113,22 +136,12 @@
     private string? _message;
     private string _messageType = "success";
     private bool _isUploading = false;
-    private List<BreadcrumbItem> _breadcrumbs = new()
-    {
-        new BreadcrumbItem { Label = "Datasets", Url = "/datasets" },
-        new BreadcrumbItem { Label = "Upload" }
-    };
 
     private void OnFileSelected(InputFileChangeEventArgs args)
     {
         _file = args.File;
         _response = null;
         _message = null;
-    }
-
-    private void OnDrop()
-    {
-        // Drag-and-drop handled by InputFile component
     }
 
     private void ClearFile()
@@ -140,10 +153,7 @@
 
     private async Task UploadAsync()
     {
-        if (_file is null)
-        {
-            return;
-        }
+        if (_file is null) return;
 
         _isUploading = true;
         _message = null;
@@ -154,19 +164,14 @@
             _response = await DatasetApi.UploadAsync(_file);
             if (_response is not null)
             {
-                _message = "Upload completed successfully.";
+                _message = "Dataset uploaded and registered successfully.";
                 _messageType = "success";
                 _file = null;
-            }
-            else
-            {
-                _message = "Upload failed. Please try again.";
-                _messageType = "error";
             }
         }
         catch (Exception ex)
         {
-            _message = $"Upload error: {ex.Message}";
+            _message = $"Error: {ex.Message}";
             _messageType = "error";
         }
         finally
@@ -190,238 +195,185 @@
 }
 
 <style>
-    .page-header {
-        margin-bottom: var(--space-6);
+    .upload-page {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
     }
 
-    .page-header h1 {
-        font-family: var(--font-ui);
-        font-size: 1.75rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-1);
-        color: var(--color-text);
-    }
-
-    .page-desc {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.9375rem;
-    }
-
-    .upload-layout {
+    .upload-grid {
         display: grid;
-        grid-template-columns: 1fr 280px;
-        gap: var(--space-6);
+        grid-template-columns: 1fr 320px;
+        gap: 32px;
+        align-items: start;
     }
 
-    .upload-main {
-        min-width: 0;
+    .main-upload-card {
+        padding: 32px;
     }
 
-    .upload-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-6);
-    }
-
-    .dropzone {
-        border: 1px solid var(--color-border);
-        padding: var(--space-8) var(--space-6);
-        text-align: center;
-        background: var(--color-bg);
-    }
-
-    .dropzone-label {
-        margin: 0 0 var(--space-3);
-        color: var(--color-text-secondary);
-        font-size: 0.9375rem;
-    }
-
-    .dropzone ::deep input {
-        font-family: var(--font-ui);
-        font-size: 0.875rem;
-    }
-
-    .file-info {
+    .premium-dropzone {
+        position: relative;
+        border: 2px dashed var(--border-subtle);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 20px;
+        height: 240px;
         display: flex;
         align-items: center;
-        gap: var(--space-5);
-        padding: var(--space-3) var(--space-4);
-        margin-top: var(--space-4);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg);
-        flex-wrap: wrap;
-    }
-
-    .file-details {
-        display: flex;
-        gap: var(--space-2);
-        align-items: center;
-    }
-
-    .file-label {
-        font-size: 0.8125rem;
-        font-weight: 500;
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-
-    .file-name {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--color-text);
-    }
-
-    .file-size {
-        font-size: 0.875rem;
-        color: var(--color-text-secondary);
-        font-family: var(--font-mono);
-    }
-
-    .upload-actions {
-        display: flex;
-        gap: var(--space-3);
-        margin-top: var(--space-5);
-    }
-
-    .upload-actions .button {
-        flex: 1;
         justify-content: center;
+        text-align: center;
+        transition: all 0.3s ease;
+        overflow: hidden;
     }
 
-    .upload-result {
-        margin-top: var(--space-5);
-        padding: var(--space-5);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg);
+    .premium-dropzone:hover {
+        border-color: var(--accent-violet);
+        background: rgba(129, 140, 248, 0.05);
     }
 
-    .result-title {
-        font-family: var(--font-ui);
-        font-size: 1rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-4);
-        color: var(--color-text);
+    .premium-dropzone.has-file {
+        border-color: var(--accent-green);
+        background: rgba(52, 211, 153, 0.03);
+        border-style: solid;
     }
 
-    .result-details {
-        display: grid;
-        gap: var(--space-2);
-        margin-bottom: var(--space-4);
+    .file-input-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
     }
 
-    .result-row {
+    .dropzone-icon {
+        font-size: 3.5rem;
+        margin-bottom: 16px;
+        opacity: 0.8;
+    }
+
+    .dropzone-text {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .primary-text {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-h1);
+    }
+
+    .secondary-text {
+        color: var(--text-muted);
+    }
+
+    .file-ready {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--accent-green);
+    }
+
+    .file-size-tag {
+        font-family: var(--font-mono);
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .upload-controls {
         display: flex;
         justify-content: space-between;
-        gap: var(--space-3);
-        font-size: 0.875rem;
-        padding: var(--space-1) 0;
-        border-bottom: 1px solid var(--color-border);
+        align-items: center;
+        margin-top: 24px;
     }
 
-    .result-row:last-child {
-        border-bottom: none;
+    .result-panel {
+        margin-top: 32px;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-active);
+        padding: 24px;
     }
 
-    .result-label {
-        font-weight: 500;
-        color: var(--color-text-secondary);
+    .result-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .result-header h3 { margin: 0; font-size: 1.2rem; }
+
+    .result-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .res-stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .res-stat label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.03em;
-        font-size: 0.8125rem;
-    }
-
-    .result-value {
-        color: var(--color-text);
-        text-align: right;
-    }
-
-    .result-value.mono {
-        font-family: var(--font-mono);
-        font-size: 0.8125rem;
-    }
-
-    .result-duplicate {
-        margin: 0 0 var(--space-4);
-        font-size: 0.875rem;
-        color: var(--color-text-secondary);
+        font-weight: 600;
     }
 
     .result-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .btn-full { width: 100%; justify-content: center; }
+
+    .message-container { margin-top: 24px; }
+    .full-width { width: 100%; justify-content: center; }
+
+    .sidebar-card h3 {
+        font-size: 1rem;
+        margin-bottom: 16px;
+    }
+
+    .badge-list {
         display: flex;
-        gap: var(--space-3);
+        gap: 8px;
+        margin-bottom: 16px;
     }
 
-    .result-actions .button {
-        flex: 1;
-        justify-content: center;
+    .sidebar-note {
+        font-size: 0.85rem;
+        color: var(--text-muted);
     }
 
-    .alert {
-        padding: var(--space-3) var(--space-4);
-        margin-top: var(--space-4);
-        font-size: 0.875rem;
-        border: 1px solid var(--color-border);
-    }
-
-    .alert-success {
-        background: var(--color-bg);
-        color: var(--color-text);
-        border-color: var(--color-border);
-    }
-
-    .alert-error {
-        background: var(--color-bg);
-        color: var(--color-negative);
-        border-color: var(--color-negative);
-    }
-
-    .upload-sidebar {
-        min-width: 0;
-    }
-
-    .sidebar-section {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-4);
-        margin-bottom: var(--space-4);
-    }
-
-    .sidebar-section:last-child {
-        margin-bottom: 0;
-    }
-
-    .sidebar-section h4 {
-        font-family: var(--font-ui);
-        font-size: 0.8125rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin: 0 0 var(--space-3);
-        color: var(--color-text);
-    }
-
-    .sidebar-section ul {
+    .tips-list {
+        padding-left: 18px;
         margin: 0;
-        padding-left: var(--space-4);
     }
 
-    .sidebar-section li {
-        font-size: 0.8125rem;
-        color: var(--color-text-secondary);
-        margin-bottom: var(--space-2);
+    .tips-list li {
+        font-size: 0.85rem;
+        color: var(--text-body);
+        margin-bottom: 10px;
         line-height: 1.5;
     }
 
-    button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+    .spinner-inline {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-right: 8px;
     }
 
-    @@media (max-width: 720px) {
-        .upload-layout {
-            grid-template-columns: 1fr;
-        }
+    @@media (max-width: 1024px) {
+        .upload-grid { grid-template-columns: 1fr; }
     }
 </style>

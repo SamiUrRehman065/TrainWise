@@ -5,84 +5,107 @@
 @inject IJSRuntime JSRuntime
 @using TrainWise.Web.Components.Common
 
-
-<section class="page-header">
-    <div>
-        <h1>Datasets</h1>
-        <p class="lead">Manage your training datasets.</p>
-    </div>
-    <div class="header-actions">
-        <a href="/upload" class="button primary">Upload Dataset</a>
-    </div>
-</section>
-
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="alert alert-warning">
-        <p>Please <a href="/login">sign in</a> to view your datasets.</p>
-    </div>
-}
-else
-{
-    @if (_isLoading)
-    {
-        <div class="card">
-            <div class="loading-spinner"></div>
-            <p class="muted" style="text-align:center;">Loading datasets...</p>
+<div class="datasets-page">
+    <section class="tw-section-header">
+        <h1 class="text-gradient">My Datasets</h1>
+        <p class="subtitle">Manage your training datasets and prepare them for machine learning models.</p>
+        <div class="header-actions">
+            <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/upload")'>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span>Upload Data</span>
+            </button>
         </div>
-    }
-    else if (_filteredDatasets.Count == 0)
+    </section>
+
+    @if (!SessionState.IsAuthenticated)
     {
-        <div class="empty-state">
-            <h3>No datasets yet</h3>
-            <p class="muted">Upload your first dataset to get started with training models.</p>
-            <a href="/upload" class="button primary" style="margin-top:16px;">Upload Dataset</a>
+        <div class="tw-card animate-fade-up">
+            <p>Please <a href="/login">sign in</a> to view your datasets.</p>
         </div>
     }
     else
     {
-        <FilterBar FilterDefinitions="@_filterDefinitions" OnFilterApplied="OnFilterApplied" />
+        @if (_isLoading)
+        {
+            <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
+                <div class="loading-spinner"></div>
+                <p class="stat-label" style="margin-top: 16px;">Loading datasets...</p>
+            </div>
+        }
+        else if (_filteredDatasets.Count == 0)
+        {
+            <div class="tw-card empty-state animate-fade-up">
+                <div class="empty-icon">📁</div>
+                <h3>No datasets yet</h3>
+                <p class="subtitle">Upload your first dataset to get started with training models.</p>
+                <button class="tw-btn-primary" style="margin-top: 24px;" @onclick='() => NavManager.NavigateTo("/upload")'>
+                    Upload Dataset
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="filter-section animate-fade-up">
+                <FilterBar FilterDefinitions="@_filterDefinitions" OnFilterApplied="OnFilterApplied" />
+            </div>
 
-        <div class="dataset-grid">
-            @foreach (var dataset in _paginatedDatasets)
-            {
-                <div class="dataset-card">
-                    <div class="card-header">
-                        <h4>@dataset.FileName</h4>
-                        <span class="dataset-date">@dataset.UploadedAt.ToString("MMM dd, yyyy")</span>
-                    </div>
+            <div class="tw-card table-card animate-fade-up">
+                <table class="tw-table">
+                    <thead>
+                        <tr>
+                            <th>Dataset Name</th>
+                            <th>Status</th>
+                            <th>Rows</th>
+                            <th>Cols</th>
+                            <th>Size</th>
+                            <th>Uploaded</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var dataset in _paginatedDatasets)
+                        {
+                            <tr>
+                                <td class="dataset-name-cell">
+                                    <div class="dataset-icon">📊</div>
+                                    <span>@dataset.FileName</span>
+                                </td>
+                                <td>
+                                    <span class="tw-badge success">Ready</span>
+                                </td>
+                                <td><code class="tw-mono">@dataset.RowCount.ToString("N0")</code></td>
+                                <td><code class="tw-mono">@dataset.ColumnCount.ToString("N0")</code></td>
+                                <td><code class="tw-mono">@FormatBytes(dataset.Size)</code></td>
+                                <td class="text-muted">@dataset.UploadedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="@($"/datasets/{dataset.DatasetId}")" class="tw-btn-ghost btn-xs" title="View Detail">
+                                            View
+                                        </a>
+                                        <button class="tw-btn-primary btn-xs" @onclick='() => NavManager.NavigateTo("/training")'>
+                                            Train
+                                        </button>
+                                        <button class="tw-btn-danger btn-xs" @onclick="() => DeleteDatasetAsync(dataset.DatasetId)" title="Delete">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
 
-                    <div class="dataset-stats">
-                        <div class="ds-stat">
-                            <span class="ds-label">Rows</span>
-                            <span class="ds-value">@dataset.RowCount</span>
-                        </div>
-                        <div class="ds-stat">
-                            <span class="ds-label">Columns</span>
-                            <span class="ds-value">@dataset.ColumnCount</span>
-                        </div>
-                        <div class="ds-stat">
-                            <span class="ds-label">Size</span>
-                            <span class="ds-value">@FormatBytes(dataset.Size)</span>
-                        </div>
-                    </div>
-
-                    <div class="card-actions">
-                        <a href="@($"/datasets/{dataset.DatasetId}")" class="button small">View</a>
-                        <a href="/training" class="button ghost small">Train</a>
-                        <button class="button ghost small" style="color:var(--color-negative);" @onclick="() => DeleteDatasetAsync(dataset.DatasetId)">Delete</button>
-                    </div>
-                </div>
-            }
-        </div>
-
-        <Pagination
-            CurrentPage="@_currentPage"
-            PageSize="@_pageSize"
-            TotalItems="@_filteredDatasets.Count"
-            OnPageChanged="OnPageChanged" />
+            <div class="pagination-section animate-fade-up">
+                <Pagination
+                    CurrentPage="@_currentPage"
+                    PageSize="@_pageSize"
+                    TotalItems="@_filteredDatasets.Count"
+                    OnPageChanged="OnPageChanged" />
+            </div>
+        }
     }
-}
+</div>
 
 @code {
     private List<DatasetListItem> _datasets = new();
@@ -92,10 +115,6 @@ else
     private int _currentPage = 1;
     private int _pageSize = 12;
     private List<FilterDefinition> _filterDefinitions = new();
-    private List<BreadcrumbItem> _breadcrumbs = new()
-    {
-        new BreadcrumbItem { Label = "Datasets" }
-    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -195,76 +214,105 @@ else
 }
 
 <style>
-    .dataset-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: var(--space-4);
-        margin-bottom: var(--space-5);
-    }
-
-    .dataset-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
+    .datasets-page {
         display: flex;
         flex-direction: column;
+        gap: 32px;
     }
 
-    .dataset-card .card-header {
-        margin-bottom: 0;
-        border-bottom: 1px solid var(--color-border);
-        padding: var(--space-4);
+    .header-actions {
+        margin-top: 16px;
     }
 
-    .dataset-card .card-header h4 {
-        font-size: 15px;
-        margin-bottom: var(--space-1);
-        word-break: break-word;
+    .table-card {
+        padding: 0;
+        overflow: hidden;
     }
 
-    .dataset-date {
-        font-size: 12px;
-        color: var(--color-text-secondary);
+    .tw-table {
+        width: 100%;
+        border-collapse: collapse;
     }
 
-    .dataset-stats {
-        padding: var(--space-4);
-        flex: 1;
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-3);
-    }
-
-    .ds-stat {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .ds-label {
-        font-size: 10px;
-        font-weight: 700;
+    .tw-table th {
+        text-align: left;
+        padding: 16px 24px;
+        font-size: 0.8rem;
+        color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: var(--color-text-secondary);
+        border-bottom: 1px solid var(--border-subtle);
+        background: rgba(255, 255, 255, 0.01);
     }
 
-    .ds-value {
+    .tw-table td {
+        padding: 16px 24px;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .tw-table tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .dataset-name-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        color: var(--text-h1);
+    }
+
+    .dataset-icon {
+        font-size: 1.2rem;
+    }
+
+    .tw-mono {
         font-family: var(--font-mono);
-        font-size: 16px;
+        color: var(--accent-cyan);
+        background: rgba(34, 211, 238, 0.05);
+        padding: 2px 6px;
+        border-radius: 4px;
     }
 
-    .dataset-card .card-actions {
-        margin-top: 0;
-        padding: var(--space-3) var(--space-4);
+    .action-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
     }
 
-    @@media (max-width: 720px) {
-        .dataset-grid {
-            grid-template-columns: 1fr;
-        }
+    .btn-xs {
+        padding: 4px 12px !important;
+        font-size: 0.75rem !important;
+        height: 28px;
+    }
 
-        .dataset-stats {
-            grid-template-columns: 1fr;
-        }
+    .empty-state {
+        text-align: center;
+        padding: 80px 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(129, 140, 248, 0.1);
+        border-top-color: var(--accent-violet);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto;
+    }
+
+
+    .filter-section {
+        margin-bottom: -16px;
     }
 </style>

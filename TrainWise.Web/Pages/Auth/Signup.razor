@@ -3,90 +3,114 @@
 @inject TrainWise.Web.Services.State.SessionState SessionState
 @inject NavigationManager NavManager
 
-@if (SessionState.IsAuthenticated)
-{
-    <div class="auth-page">
-        <div class="auth-card">
-            <h1 class="auth-title">Redirecting...</h1>
-            <p class="auth-subtitle">You are already signed in.</p>
-        </div>
-    </div>
-}
-else
-{
-    <div class="auth-page">
-        <div class="auth-card">
-            <h1 class="auth-title">Create account</h1>
-            <p class="auth-subtitle">Join TrainWise to start your ML journey</p>
+<div class="auth-page-wrapper">
+    <div class="gradient-blob"></div>
+    <div class="particles"></div>
+
+    <div class="auth-card animate-fade-up">
+        @if (SessionState.IsAuthenticated)
+        {
+            <div class="auth-success-state">
+                <div class="success-icon-wrapper">
+                    <span class="success-icon">🚀</span>
+                </div>
+                <h1 class="auth-title text-gradient">Account Ready!</h1>
+                <p class="auth-subtitle">You are already signed in to TrainWise.</p>
+                <div class="success-actions">
+                    <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/")'>Go to Home</button>
+                    <button class="tw-btn-ghost" @onclick='() => NavManager.NavigateTo("/dashboard")'>View Dashboard</button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <span class="logo-symbol">TW</span>
+                </div>
+                <h1 class="auth-title text-gradient">Create Account</h1>
+                <p class="auth-tagline">Start your machine learning journey today.</p>
+            </div>
 
             <div class="auth-form">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input
-                        id="username"
-                        type="text"
-                        @bind="_username"
-                        placeholder="Choose a username"
-                        @onkeyup='async (e) => { if (e.Key == "Enter") await SignupAsync(); }' />
+                <div class="tw-input-group">
+                    <label class="tw-label">Username</label>
+                    <div class="tw-input-wrapper">
+                        <span class="input-icon">👤</span>
+                        <input
+                            type="text"
+                            class="tw-input @(!string.IsNullOrEmpty(_usernameError) ? "input-error" : "")"
+                            @bind="_username"
+                            placeholder="Pick a unique username"
+                            @onkeyup='async (e) => { if (e.Key == "Enter") await SignupAsync(); }' />
+                    </div>
                     @if (!string.IsNullOrEmpty(_usernameError))
                     {
                         <small class="field-error">@_usernameError</small>
                     }
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input
-                        id="password"
-                        type="password"
-                        @bind="_password"
-                        placeholder="Min 6 characters"
-                        @onkeyup='async (e) => { if (e.Key == "Enter") await SignupAsync(); }' />
+                <div class="tw-input-group">
+                    <label class="tw-label">Password</label>
+                    <div class="tw-input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input
+                            type="password"
+                            class="tw-input @(!string.IsNullOrEmpty(_passwordError) ? "input-error" : "")"
+                            @bind="_password"
+                            placeholder="Minimum 6 characters"
+                            @onkeyup='async (e) => { if (e.Key == "Enter") await SignupAsync(); }' />
+                    </div>
                     @if (!string.IsNullOrEmpty(_passwordError))
                     {
                         <small class="field-error">@_passwordError</small>
                     }
                 </div>
 
-                <div class="form-group">
-                    <label for="confirm-password">Confirm password</label>
-                    <input
-                        id="confirm-password"
-                        type="password"
-                        @bind="_confirmPassword"
-                        placeholder="Confirm password"
-                        @onkeyup='async (e) => { if (e.Key == "Enter") await SignupAsync(); }' />
+                <div class="tw-input-group">
+                    <label class="tw-label">Confirm Password</label>
+                    <div class="tw-input-wrapper">
+                        <span class="input-icon">🛡️</span>
+                        <input
+                            type="password"
+                            class="tw-input @(!string.IsNullOrEmpty(_confirmError) ? "input-error" : "")"
+                            @bind="_confirmPassword"
+                            placeholder="Re-enter password"
+                            @onkeyup='async (e) => { if (e.Key == "Enter") await SignupAsync(); }' />
+                    </div>
                     @if (!string.IsNullOrEmpty(_confirmError))
                     {
                         <small class="field-error">@_confirmError</small>
                     }
                 </div>
 
-                <button class="button primary auth-submit" @onclick="SignupAsync" disabled="@_isLoading">
+                <button class="tw-btn-primary btn-lg auth-submit @(_isLoading ? "btn-loading" : "")" @onclick="SignupAsync" disabled="@_isLoading">
                     @if (_isLoading)
                     {
+                        <span class="spinner-inline"></span>
                         <span>Creating account...</span>
                     }
                     else
                     {
-                        <span>Sign up</span>
+                        <span>Get Started</span>
+                        <span class="btn-arrow">→</span>
                     }
                 </button>
 
                 @if (!string.IsNullOrWhiteSpace(_message))
                 {
-                    <div class="alert alert-@(_isSuccess ? "success" : "error")">
+                    <div class="tw-badge @(_isSuccess ? "success" : "danger") full-width">
                         @_message
                     </div>
                 }
             </div>
 
             <div class="auth-footer">
-                <p>Already have an account? <a href="/login">Sign in</a></p>
+                <p>Already have an account? <a href="/login" class="link-gradient">Sign In</a></p>
             </div>
-        </div>
+        }
     </div>
-}
+</div>
 
 @code {
     private string _username = string.Empty;
@@ -99,56 +123,25 @@ else
     private bool _isLoading = false;
     private bool _isSuccess = false;
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (SessionState.IsAuthenticated)
-        {
-            NavManager.NavigateTo("/stats", forceLoad: true);
-        }
-
-        return Task.CompletedTask;
-    }
-
     private void ValidateForm()
     {
         _usernameError = null;
         _passwordError = null;
         _confirmError = null;
 
-        if (string.IsNullOrWhiteSpace(_username))
-        {
-            _usernameError = "Username is required";
-        }
-        else if (_username.Length < 3)
-        {
-            _usernameError = "Username must be at least 3 characters";
-        }
+        if (string.IsNullOrWhiteSpace(_username)) _usernameError = "Username required";
+        else if (_username.Length < 3) _usernameError = "Too short (min 3)";
 
-        if (string.IsNullOrWhiteSpace(_password))
-        {
-            _passwordError = "Password is required";
-        }
-        else if (_password.Length < 6)
-        {
-            _passwordError = "Password must be at least 6 characters";
-        }
+        if (string.IsNullOrWhiteSpace(_password)) _passwordError = "Password required";
+        else if (_password.Length < 6) _passwordError = "Too short (min 6)";
 
-        if (_password != _confirmPassword)
-        {
-            _confirmError = "Passwords do not match";
-        }
+        if (_password != _confirmPassword) _confirmError = "Passwords do not match";
     }
 
     private async Task SignupAsync()
     {
         ValidateForm();
-
-        if (!string.IsNullOrEmpty(_usernameError) ||
-            !string.IsNullOrEmpty(_passwordError) ||
-            !string.IsNullOrEmpty(_confirmError))
-        {
-            return;
-        }
+        if (!string.IsNullOrEmpty(_usernameError) || !string.IsNullOrEmpty(_passwordError) || !string.IsNullOrEmpty(_confirmError)) return;
 
         _isLoading = true;
         _message = null;
@@ -158,14 +151,14 @@ else
         if (success)
         {
             _isSuccess = true;
-            _message = "Account created! Redirecting to dashboard...";
+            _message = "Account created! Redirecting...";
             await Task.Delay(1000);
-            NavManager.NavigateTo("/stats");
+            NavManager.NavigateTo("/", forceLoad: true);
         }
         else
         {
             _isSuccess = false;
-            _message = "Signup failed. Username may already be taken.";
+            _message = "Username already taken";
         }
 
         _isLoading = false;
@@ -173,56 +166,101 @@ else
 }
 
 <style>
-    .auth-page {
-        display: flex;
-        justify-content: center;
-        padding-top: var(--space-8);
+    /* Reusing base styles from Login.razor for consistency */
+    .auth-page-wrapper {
+        position: fixed; inset: 0;
+        background: radial-gradient(circle at 50% 50%, #161b27 0%, #0d1117 100%);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 5000; overflow: hidden;
+    }
+
+    .gradient-blob {
+        position: absolute; width: 1000px; height: 1000px;
+        background: radial-gradient(circle, rgba(129, 140, 248, 0.1) 0%, transparent 70%);
+        bottom: -500px; left: -500px;
+        animation: float 20s infinite alternate-reverse;
+    }
+
+    .particles {
+        position: absolute; inset: 0;
+        background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 40px 40px; opacity: 0.5;
     }
 
     .auth-card {
-        width: 100%;
-        max-width: 380px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        padding: var(--space-6) var(--space-5);
+        width: 100%; max-width: 500px; padding: 48px;
+        background: rgba(22, 27, 39, 0.7); backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 32px; box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+        position: relative; z-index: 10;
     }
 
-    .auth-title {
-        font-size: 24px;
-        font-weight: 700;
-        margin-bottom: var(--space-1);
-        text-align: center;
+    .auth-header { text-align: center; margin-bottom: 40px; }
+
+    .auth-logo {
+        width: 56px; height: 56px; background: var(--accent-grad);
+        border-radius: 16px; margin: 0 auto 20px;
+        display: flex; align-items: center; justify-content: center;
     }
 
-    .auth-subtitle {
-        font-size: 14px;
-        color: var(--color-text-secondary);
-        text-align: center;
-        margin-bottom: var(--space-5);
+    .logo-symbol { font-weight: 900; color: white; font-size: 1.25rem; }
+
+    .auth-title { font-size: 2rem; margin-bottom: 8px; letter-spacing: -1px; }
+
+    .auth-tagline { color: var(--text-muted); font-size: 0.9rem; margin: 0; }
+
+    .auth-form { display: flex; flex-direction: column; gap: 20px; }
+
+    .tw-input-group { display: flex; flex-direction: column; gap: 6px; }
+
+    .tw-label {
+        font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: 1px; padding-left: 4px;
     }
 
-    .auth-form {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-4);
+    .tw-input-wrapper { position: relative; }
+
+    .input-icon {
+        position: absolute; left: 16px; top: 50%;
+        transform: translateY(-50%); font-size: 0.9rem; opacity: 0.6;
     }
 
-    .auth-submit {
-        width: 100%;
-        margin-top: var(--space-2);
+    .tw-input { width: 100%; padding-left: 48px !important; }
+
+    .input-error { border-color: #ef4444 !important; }
+
+    .field-error { color: #ef4444; font-size: 0.7rem; font-weight: 600; padding-left: 4px; }
+
+    .auth-submit { margin-top: 12px; display: flex; justify-content: center; align-items: center; gap: 12px; }
+
+    .btn-lg { height: 56px; font-size: 1rem; }
+
+    .btn-arrow { transition: transform 0.3s ease; }
+
+    .auth-submit:hover .btn-arrow { transform: translateX(5px); }
+
+    .auth-footer { margin-top: 32px; text-align: center; font-size: 0.9rem; }
+
+    .link-gradient {
+        background: var(--accent-grad); -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent; font-weight: 700;
     }
 
-    .field-error {
-        color: var(--color-negative);
-        font-size: 12px;
-        margin-top: var(--space-1);
+    .full-width { width: 100%; justify-content: center; margin-top: 16px; }
+
+    .auth-success-state { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+    .success-icon-wrapper {
+        width: 70px; height: 70px; background: rgba(52, 211, 153, 0.1);
+        border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem;
     }
 
-    .auth-footer {
-        margin-top: var(--space-5);
-        padding-top: var(--space-4);
-        border-top: 1px solid var(--color-border);
-        text-align: center;
-        font-size: 13px;
+    .success-actions { display: flex; gap: 12px; width: 100%; margin-top: 12px; }
+
+    .success-actions button { flex: 1; }
+
+    .spinner-inline {
+        width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;
     }
 </style>

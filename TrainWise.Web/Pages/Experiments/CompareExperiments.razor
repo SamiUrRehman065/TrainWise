@@ -4,270 +4,186 @@
 @inject TrainWise.Web.Services.State.SessionState SessionState
 @inject ILogger<CompareExperiments> Logger
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavManager
 @using TrainWise.Web.Components.Common
 
+<div class="compare-page">
+    @if (!SessionState.IsAuthenticated)
+    {
+        <div class="tw-card animate-fade-up">
+            <p>Please <a href="/login">sign in</a> to compare experiment results.</p>
+        </div>
+    }
+    else
+    {
+        <section class="tw-section-header animate-fade-up">
+            <h1 class="text-gradient">Compare Experiments</h1>
+            <p class="subtitle">Select two training runs to perform a side-by-side performance analysis and feature audit.</p>
+        </section>
 
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="alert alert-warning">
-        <p>Please <a href="/login">sign in</a> to compare experiments.</p>
-    </div>
-}
-else
-{
-    <div class="page-header">
-        <h1>Compare experiments</h1>
-        <p class="page-desc">Side-by-side comparison of training results.</p>
-    </div>
-
-    <div class="compare-layout">
-        <div class="compare-selectors">
-            <div class="selector-group">
-                <label>Experiment 1</label>
-                <select @bind="_exp1Id" @bind:after="OnExperimentSelected">
-                    <option value="">-- Select experiment --</option>
-                    @if (_experiments?.Any() == true)
-                    {
-                        @foreach (var exp in _experiments)
+        <div class="compare-controls animate-fade-up">
+            <div class="tw-card selector-card">
+                <div class="selectors-grid">
+                    <div class="selector-item">
+                        <label>Baseline Run (Experiment 1)</label>
+                        <select class="tw-input" @bind="_exp1Id" @bind:after="OnExperimentSelected">
+                            <option value="">-- Select baseline --</option>
+                            @if (_experiments?.Any() == true)
+                            {
+                                @foreach (var exp in _experiments)
+                                {
+                                    <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="selector-item">
+                        <label>Comparison Run (Experiment 2)</label>
+                        <select class="tw-input" @bind="_exp2Id" @bind:after="OnExperimentSelected">
+                            <option value="">-- Select comparison --</option>
+                            @if (_experiments?.Any() == true)
+                            {
+                                @foreach (var exp in _experiments)
+                                {
+                                    <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <button class="tw-btn-primary" @onclick="CompareAsync" disabled="@(string.IsNullOrEmpty(_exp1Id) || string.IsNullOrEmpty(_exp2Id) || _isComparing)">
+                        @if (_isComparing)
                         {
-                            <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType)</option>
+                            <span class="spinner-inline"></span>
                         }
-                    }
-                </select>
-            </div>
-
-            <div class="selector-group">
-                <label>Experiment 2</label>
-                <select @bind="_exp2Id" @bind:after="OnExperimentSelected">
-                    <option value="">-- Select experiment --</option>
-                    @if (_experiments?.Any() == true)
-                    {
-                        @foreach (var exp in _experiments)
+                        else
                         {
-                            <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType)</option>
+                            <span>📊 Compare Runs</span>
                         }
-                    }
-                </select>
+                    </button>
+                </div>
             </div>
-
-            <button class="button primary" @onclick="CompareAsync" disabled="@(string.IsNullOrEmpty(_exp1Id) || string.IsNullOrEmpty(_exp2Id))">
-                Compare
-            </button>
         </div>
 
         @if (_isComparing)
         {
-            <div class="state-card">
+            <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
                 <div class="loading-spinner"></div>
-                <p class="state-text">Loading comparison data…</p>
+                <p class="stat-label" style="margin-top: 16px;">Analyzing Deltas...</p>
             </div>
         }
-        else if (_fullExp1 is not null && _fullExp2 is not null && _experiment1 is not null && _experiment2 is not null)
+        else if (_fullExp1 is not null && _fullExp2 is not null)
         {
-            <div class="compare-table-wrap">
-                <table class="compare-table">
-                    <thead>
-                        <tr>
-                            <th>Metric</th>
-                            <th>
-                                <div class="exp-head">
-                                    <strong>@_experiment1.ModelName</strong>
-                                    <small>@_experiment1.TaskType</small>
-                                </div>
-                            </th>
-                            <th>
-                                <div class="exp-head">
-                                    <strong>@_experiment2.ModelName</strong>
-                                    <small>@_experiment2.TaskType</small>
-                                </div>
-                            </th>
-                            <th>Difference</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Basic Info -->
-                        <tr>
-                            <td colspan="4" class="section-header">Basic Information</td>
-                        </tr>
-                        <tr>
-                            <td>Training duration</td>
-                            <td>@(_fullExp1.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</td>
-                            <td>@(_fullExp2.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</td>
-                            <td class="@GetDifferenceClass(_fullExp1.TrainingDurationSec, _fullExp2.TrainingDurationSec, false)">
-                                @GetDifference(_fullExp1.TrainingDurationSec, _fullExp2.TrainingDurationSec, false)
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Created</td>
-                            <td>@_fullExp1.CreatedAt.ToString("MMM dd, yyyy")</td>
-                            <td>@_fullExp2.CreatedAt.ToString("MMM dd, yyyy")</td>
-                            <td>-</td>
-                        </tr>
-                        <tr>
-                            <td>Dataset</td>
-                            <td>@_experiment1.DatasetName</td>
-                            <td>@_experiment2.DatasetName</td>
-                            <td>-</td>
-                        </tr>
-
-                        <!-- Metrics -->
-                        <tr>
-                            <td colspan="4" class="section-header">Metrics</td>
-                        </tr>
-                        @if (_fullExp1.TaskType.ToLower() == "classification" && _fullExp2.TaskType.ToLower() == "classification" &&
-                             _fullExp1.Result?.ClassificationMetrics != null && _fullExp2.Result?.ClassificationMetrics != null)
-                        {
-                            <tr>
-                                <td>Accuracy</td>
-                                <td>@_fullExp1.Result.ClassificationMetrics.Accuracy.ToString("P1")</td>
-                                <td>@_fullExp2.Result.ClassificationMetrics.Accuracy.ToString("P1")</td>
-                                <td class="@GetDifferenceClass(_fullExp1.Result.ClassificationMetrics.Accuracy, _fullExp2.Result.ClassificationMetrics.Accuracy, true)">
-                                    @GetDifferencePct(_fullExp1.Result.ClassificationMetrics.Accuracy, _fullExp2.Result.ClassificationMetrics.Accuracy, true)
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Precision</td>
-                                <td>@_fullExp1.Result.ClassificationMetrics.Precision.ToString("P1")</td>
-                                <td>@_fullExp2.Result.ClassificationMetrics.Precision.ToString("P1")</td>
-                                <td class="@GetDifferenceClass(_fullExp1.Result.ClassificationMetrics.Precision, _fullExp2.Result.ClassificationMetrics.Precision, true)">
-                                    @GetDifferencePct(_fullExp1.Result.ClassificationMetrics.Precision, _fullExp2.Result.ClassificationMetrics.Precision, true)
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Recall</td>
-                                <td>@_fullExp1.Result.ClassificationMetrics.Recall.ToString("P1")</td>
-                                <td>@_fullExp2.Result.ClassificationMetrics.Recall.ToString("P1")</td>
-                                <td class="@GetDifferenceClass(_fullExp1.Result.ClassificationMetrics.Recall, _fullExp2.Result.ClassificationMetrics.Recall, true)">
-                                    @GetDifferencePct(_fullExp1.Result.ClassificationMetrics.Recall, _fullExp2.Result.ClassificationMetrics.Recall, true)
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>F1 Score</td>
-                                <td>@_fullExp1.Result.ClassificationMetrics.F1Score.ToString("P1")</td>
-                                <td>@_fullExp2.Result.ClassificationMetrics.F1Score.ToString("P1")</td>
-                                <td class="@GetDifferenceClass(_fullExp1.Result.ClassificationMetrics.F1Score, _fullExp2.Result.ClassificationMetrics.F1Score, true)">
-                                    @GetDifferencePct(_fullExp1.Result.ClassificationMetrics.F1Score, _fullExp2.Result.ClassificationMetrics.F1Score, true)
-                                </td>
-                            </tr>
-                        }
-                        else if (_fullExp1.TaskType.ToLower() == "regression" && _fullExp2.TaskType.ToLower() == "regression" &&
-                                 _fullExp1.Result?.RegressionMetrics != null && _fullExp2.Result?.RegressionMetrics != null)
-                        {
-                            <tr>
-                                <td>R2 Score</td>
-                                <td>@_fullExp1.Result.RegressionMetrics.R2Score.ToString("0.000")</td>
-                                <td>@_fullExp2.Result.RegressionMetrics.R2Score.ToString("0.000")</td>
-                                <td class="@GetDifferenceClass(_fullExp1.Result.RegressionMetrics.R2Score, _fullExp2.Result.RegressionMetrics.R2Score, true)">
-                                    @GetDifference(_fullExp1.Result.RegressionMetrics.R2Score, _fullExp2.Result.RegressionMetrics.R2Score, true)
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>RMSE</td>
-                                <td>@_fullExp1.Result.RegressionMetrics.Rmse.ToString("0.000")</td>
-                                <td>@_fullExp2.Result.RegressionMetrics.Rmse.ToString("0.000")</td>
-                                <td class="@GetDifferenceClass(_fullExp1.Result.RegressionMetrics.Rmse, _fullExp2.Result.RegressionMetrics.Rmse, false)">
-                                    @GetDifference(_fullExp1.Result.RegressionMetrics.Rmse, _fullExp2.Result.RegressionMetrics.Rmse, false)
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>MAE</td>
-                                <td>@_fullExp1.Result.RegressionMetrics.Mae.ToString("0.000")</td>
-                                <td>@_fullExp2.Result.RegressionMetrics.Mae.ToString("0.000")</td>
-                                <td class="@GetDifferenceClass(_fullExp1.Result.RegressionMetrics.Mae, _fullExp2.Result.RegressionMetrics.Mae, false)">
-                                    @GetDifference(_fullExp1.Result.RegressionMetrics.Mae, _fullExp2.Result.RegressionMetrics.Mae, false)
-                                </td>
-                            </tr>
-                        }
-
-                        <!-- Hyperparameters -->
-                        @if (_fullExp1.HyperParameters != null || _fullExp2.HyperParameters != null)
-                        {
-                            <tr>
-                                <td colspan="4" class="section-header">Hyperparameters</td>
-                            </tr>
-                            @foreach (var key in GetAllKeys(_fullExp1.HyperParameters, _fullExp2.HyperParameters))
-                            {
-                                var val1 = _fullExp1.HyperParameters?.GetValueOrDefault(key)?.ToString() ?? "-";
-                                var val2 = _fullExp2.HyperParameters?.GetValueOrDefault(key)?.ToString() ?? "-";
+            <div class="comparison-results animate-fade-up">
+                <div class="tw-card table-card">
+                    <div class="table-scroll">
+                        <table class="tw-table compare-table">
+                            <thead>
                                 <tr>
-                                    <td>@key</td>
-                                    <td>@val1</td>
-                                    <td>@val2</td>
+                                    <th>Metric Category</th>
+                                    <th>
+                                        <div class="model-head">
+                                            <span class="tw-badge info">Model A</span>
+                                            <h4>@_fullExp1.ModelName</h4>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div class="model-head">
+                                            <span class="tw-badge warning">Model B</span>
+                                            <h4>@_fullExp2.ModelName</h4>
+                                        </div>
+                                    </th>
+                                    <th>Variance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- BASIC METRICS -->
+                                <tr class="table-section"><td colspan="4">Core Performance</td></tr>
+                                <tr>
+                                    <td>Accuracy / Score</td>
+                                    <td class="tw-mono">@(_fullExp1.Metrics?.Accuracy.ToString("P2") ?? "N/A")</td>
+                                    <td class="tw-mono">@(_fullExp2.Metrics?.Accuracy.ToString("P2") ?? "N/A")</td>
+                                    <td>
+                                        @RenderVariance(_fullExp1.Metrics?.Accuracy, _fullExp2.Metrics?.Accuracy, true)
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>F1-Score</td>
+                                    <td class="tw-mono">@(_fullExp1.Metrics?.F1Score.ToString("P2") ?? "N/A")</td>
+                                    <td class="tw-mono">@(_fullExp2.Metrics?.F1Score.ToString("P2") ?? "N/A")</td>
+                                    <td>
+                                        @RenderVariance(_fullExp1.Metrics?.F1Score, _fullExp2.Metrics?.F1Score, true)
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Precision</td>
+                                    <td class="tw-mono">@(_fullExp1.Metrics?.Precision.ToString("P2") ?? "N/A")</td>
+                                    <td class="tw-mono">@(_fullExp2.Metrics?.Precision.ToString("P2") ?? "N/A")</td>
+                                    <td>
+                                        @RenderVariance(_fullExp1.Metrics?.Precision, _fullExp2.Metrics?.Precision, true)
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Recall</td>
+                                    <td class="tw-mono">@(_fullExp1.Metrics?.Recall.ToString("P2") ?? "N/A")</td>
+                                    <td class="tw-mono">@(_fullExp2.Metrics?.Recall.ToString("P2") ?? "N/A")</td>
+                                    <td>
+                                        @RenderVariance(_fullExp1.Metrics?.Recall, _fullExp2.Metrics?.Recall, true)
+                                    </td>
+                                </tr>
+
+                                <!-- SYSTEM METRICS -->
+                                <tr class="table-section"><td colspan="4">System & Metadata</td></tr>
+                                <tr>
+                                    <td>Training Duration</td>
+                                    <td>@(_fullExp1.TrainingDurationSec?.ToString("F2") ?? "0.00")s</td>
+                                    <td>@(_fullExp2.TrainingDurationSec?.ToString("F2") ?? "0.00")s</td>
+                                    <td>
+                                        @RenderVariance(_fullExp1.TrainingDurationSec, _fullExp2.TrainingDurationSec, false)
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Dataset Used</td>
+                                    <td>@_fullExp1.DatasetName</td>
+                                    <td>@_fullExp2.DatasetName</td>
                                     <td>-</td>
                                 </tr>
-                            }
-                        }
 
-                        <!-- Feature Importances -->
-                        @if (_fullExp1.Result?.FeatureImportances != null || _fullExp2.Result?.FeatureImportances != null)
-                        {
-                            <tr>
-                                <td colspan="4" class="section-header">Feature Importances</td>
-                            </tr>
-                            @foreach (var feature in GetAllFeatures(_fullExp1.Result?.FeatureImportances, _fullExp2.Result?.FeatureImportances))
-                            {
-                                var val1 = _fullExp1.Result?.FeatureImportances?.GetValueOrDefault(feature);
-                                var val2 = _fullExp2.Result?.FeatureImportances?.GetValueOrDefault(feature);
-                                <tr>
-                                    <td>@feature</td>
-                                    <td>
-                                        @if (val1.HasValue)
-                                        {
-                                            <div class="feature-bar-wrap">
-                                                <span style="width: 45px; display: inline-block;">@val1.Value.ToString("P1")</span>
-                                                <div class="feature-bar model1" style="width: @((val1.Value * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (val2.HasValue)
-                                        {
-                                            <div class="feature-bar-wrap">
-                                                <span style="width: 45px; display: inline-block;">@val2.Value.ToString("P1")</span>
-                                                <div class="feature-bar model2" style="width: @((val2.Value * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
-                                    </td>
-                                    <td class="@GetDifferenceClass(val1, val2, true)">
-                                        @GetDifferencePct(val1, val2, true)
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
+                                <!-- HYPERPARAMETERS -->
+                                <tr class="table-section"><td colspan="4">Hyperparameter Audit</td></tr>
+                                @foreach (var key in GetAllKeys(_fullExp1.HyperParameters, _fullExp2.HyperParameters))
+                                {
+                                    var val1 = FormatHyperparamValue(_fullExp1.HyperParameters?.GetValueOrDefault(key));
+                                    var val2 = FormatHyperparamValue(_fullExp2.HyperParameters?.GetValueOrDefault(key));
+                                    <tr class="@(val1 != val2 ? "row-diff" : "")">
+                                        <td>@key</td>
+                                        <td class="tw-mono">@val1</td>
+                                        <td class="tw-mono">@val2</td>
+                                        <td>
+                                            @if (val1 != val2) { <span class="tw-badge warning">Changed</span> } else { <span class="text-muted">Same</span> }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-            <div class="compare-actions">
-                <button class="button primary" @onclick="ExportComparisonAsync">Export comparison</button>
-                <a href="/experiments" class="button ghost">Back to history</a>
+                <div class="compare-actions">
+                    <button class="tw-btn-ghost" @onclick="ExportComparisonAsync">📥 Export Comparison</button>
+                    <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/experiments")'>🔙 Back to History</button>
+                </div>
             </div>
         }
-    </div>
-}
+    }
+</div>
 
 @code {
     private List<TrainingHistoryItem>? _experiments;
-    private TrainingHistoryItem? _experiment1;
-    private TrainingHistoryItem? _experiment2;
     private TrainWise.Web.Models.ExperimentDetail? _fullExp1;
     private TrainWise.Web.Models.ExperimentDetail? _fullExp2;
     private string? _exp1Id;
     private string? _exp2Id;
     private bool _isComparing = false;
-    private List<BreadcrumbItem> _breadcrumbs = new()
-    {
-        new BreadcrumbItem { Label = "History", Url = "/experiments" },
-        new BreadcrumbItem { Label = "Compare" }
-    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -287,74 +203,48 @@ else
         }
     }
 
-    private void OnExperimentSelected()
-    {
-        if (!string.IsNullOrEmpty(_exp1Id) && Guid.TryParse(_exp1Id, out var id1))
-        {
-            _experiment1 = _experiments?.FirstOrDefault(e => e.ExperimentId == id1);
-        }
-        if (!string.IsNullOrEmpty(_exp2Id) && Guid.TryParse(_exp2Id, out var id2))
-        {
-            _experiment2 = _experiments?.FirstOrDefault(e => e.ExperimentId == id2);
-        }
-    }
+    private void OnExperimentSelected() { StateHasChanged(); }
 
     private async Task CompareAsync()
     {
+        if (string.IsNullOrEmpty(_exp1Id) || string.IsNullOrEmpty(_exp2Id)) return;
         _isComparing = true;
-        OnExperimentSelected();
-
-        if (_experiment1 != null)
+        try
         {
-            _fullExp1 = await ExperimentApi.GetAsync(_experiment1.ExperimentId);
+            _fullExp1 = await ExperimentApi.GetAsync(Guid.Parse(_exp1Id));
+            _fullExp2 = await ExperimentApi.GetAsync(Guid.Parse(_exp2Id));
         }
-
-        if (_experiment2 != null)
+        finally
         {
-            _fullExp2 = await ExperimentApi.GetAsync(_experiment2.ExperimentId);
+            _isComparing = false;
         }
-
-        _isComparing = false;
     }
 
-    private async Task ExportComparisonAsync()
+    private RenderFragment RenderVariance(double? val1, double? val2, bool higherIsBetter)
     {
-        if (_experiment1 is null || _experiment2 is null) return;
+        if (val1 == null || val2 == null) return @<span class="text-muted">-</span>;
+        var diff = val2.Value - val1.Value;
+        var absDiff = Math.Abs(diff);
+        var isPositive = higherIsBetter ? diff > 0 : diff < 0;
+        var colorClass = diff == 0 ? "text-muted" : (isPositive ? "text-success" : "text-danger");
+        var prefix = diff > 0 ? "+" : "";
 
-        var comparison = new
+        return @<span class="@colorClass font-bold">@prefix@diff.ToString("F3")</span>;
+    }
+
+    private static string FormatHyperparamValue(object? value)
+    {
+        if (value is System.Text.Json.JsonElement je)
         {
-            Experiment1 = _fullExp1 ?? (object)_experiment1,
-            Experiment2 = _fullExp2 ?? (object)_experiment2,
-            ComparedAt = DateTime.UtcNow
-        };
-
-        var json = System.Text.Json.JsonSerializer.Serialize(comparison, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        await JSRuntime.InvokeVoidAsync("downloadFile", bytes, "experiment_comparison.json");
-    }
-
-    private string GetDifferenceClass(double? val1, double? val2, bool higherIsBetter)
-    {
-        if (val1 == null || val2 == null) return "";
-        var diff = val2.Value - val1.Value;
-        if (higherIsBetter)
-            return diff > 0 ? "diff-positive" : diff < 0 ? "diff-negative" : "";
-        else
-            return diff < 0 ? "diff-positive" : diff > 0 ? "diff-negative" : "";
-    }
-
-    private string GetDifference(double? val1, double? val2, bool higherIsBetter)
-    {
-        if (val1 == null || val2 == null) return "-";
-        var diff = val2.Value - val1.Value;
-        return diff > 0 ? $"+{diff:0.000}" : $"{diff:0.000}";
-    }
-
-    private string GetDifferencePct(double? val1, double? val2, bool higherIsBetter)
-    {
-        if (val1 == null || val2 == null) return "-";
-        var diff = val2.Value - val1.Value;
-        return diff > 0 ? $"+{diff:P1}" : $"{diff:P1}";
+            return je.ValueKind switch
+            {
+                System.Text.Json.JsonValueKind.Null => "Default",
+                System.Text.Json.JsonValueKind.True => "True",
+                System.Text.Json.JsonValueKind.False => "False",
+                _ => je.ToString()
+            };
+        }
+        return value?.ToString() ?? "Default";
     }
 
     private IEnumerable<string> GetAllKeys(Dictionary<string, object>? dict1, Dictionary<string, object>? dict2)
@@ -365,247 +255,113 @@ else
         return keys.OrderBy(k => k);
     }
 
-    private IEnumerable<string> GetAllFeatures(Dictionary<string, double>? dict1, Dictionary<string, double>? dict2)
+    private async Task ExportComparisonAsync()
     {
-        var features = new HashSet<string>();
-        if (dict1 != null) features.UnionWith(dict1.Keys);
-        if (dict2 != null) features.UnionWith(dict2.Keys);
-        return features.OrderBy(f => f);
+        if (_fullExp1 is null || _fullExp2 is null) return;
+        var comparison = new { ModelA = _fullExp1, ModelB = _fullExp2, ComparedAt = DateTime.UtcNow };
+        var json = System.Text.Json.JsonSerializer.Serialize(comparison, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        await JSRuntime.InvokeVoidAsync("downloadFile", bytes, "model_comparison.json");
     }
 }
 
 <style>
-    .page-header {
-        margin-bottom: var(--space-6);
-    }
-
-    .page-header h1 {
-        font-family: var(--font-ui);
-        font-size: 1.75rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-1);
-        color: var(--color-text);
-    }
-
-    .page-desc {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.9375rem;
-    }
-
-    .compare-layout {
-        display: grid;
-        gap: var(--space-5);
-    }
-
-    .compare-selectors {
-        display: grid;
-        grid-template-columns: 1fr 1fr 140px;
-        gap: var(--space-4);
-        align-items: flex-end;
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-5);
-    }
-
-    .selector-group {
+    .compare-page {
         display: flex;
         flex-direction: column;
-        gap: var(--space-2);
+        gap: 32px;
     }
 
-    .selector-group label {
-        font-size: 0.8125rem;
-        font-weight: 500;
+    .selectors-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 200px;
+        gap: 24px;
+        align-items: flex-end;
+    }
+
+    .selector-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .selector-item label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.03em;
-        color: var(--color-text-secondary);
+        font-weight: 600;
+        letter-spacing: 0.5px;
     }
 
-    .selector-group select {
+    .table-card { padding: 0 !important; overflow: hidden; }
+
+    .table-scroll {
         width: 100%;
-        padding: var(--space-2) 0;
-        border: none;
-        border-bottom: 1px solid var(--color-border);
-        background: transparent;
-        font-family: var(--font-ui);
-        font-size: 0.9375rem;
-        color: var(--color-text);
-        outline: none;
-        -webkit-appearance: none;
-        appearance: none;
-        border-radius: 0;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23707060' stroke-width='1.5'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 0 center;
-        padding-right: var(--space-5);
-    }
-
-    .selector-group select:focus {
-        border-bottom-color: var(--color-accent);
-        border-bottom-width: 2px;
-    }
-
-    .compare-selectors .button {
-        align-self: flex-end;
-        justify-content: center;
-    }
-
-    .compare-table-wrap {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
         overflow-x: auto;
     }
 
     .compare-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.875rem;
     }
 
     .compare-table th {
-        padding: var(--space-4);
+        background: rgba(255, 255, 255, 0.02);
+        padding: 24px;
         text-align: left;
-        font-weight: 500;
-        border-bottom: 2px solid var(--color-border);
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-        font-size: 0.8125rem;
-        color: var(--color-text-secondary);
+        border-bottom: 2px solid var(--border-subtle);
     }
 
-    .section-header {
-        background: var(--color-bg);
-        font-weight: 600 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-size: 0.75rem;
-        color: var(--color-text-secondary);
-        padding-top: var(--space-4) !important;
-        padding-bottom: var(--space-2) !important;
-    }
-
-    .exp-head {
+    .model-head {
         display: flex;
         flex-direction: column;
-        gap: var(--space-1);
+        gap: 8px;
     }
 
-    .exp-head strong {
-        color: var(--color-text);
-        font-weight: 500;
-    }
-
-    .exp-head small {
-        font-weight: 400;
-        color: var(--color-text-secondary);
-        text-transform: lowercase;
-        font-size: 0.75rem;
-        letter-spacing: 0;
-    }
+    .model-head h4 { margin: 0; font-size: 1.1rem; color: var(--text-h1); }
 
     .compare-table td {
-        padding: var(--space-3) var(--space-4);
-        border-bottom: 1px solid var(--color-border);
-        transition: background-color 0.2s ease;
+        padding: 16px 24px;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--border-subtle);
+        color: var(--text-body);
     }
 
-    .compare-table tbody tr:hover td {
-        background-color: var(--color-bg);
+    .table-section td {
+        background: rgba(255, 255, 255, 0.03);
+        font-weight: 800;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--accent-violet);
+        letter-spacing: 1px;
+        padding: 12px 24px;
     }
 
-    .compare-table tbody tr:last-child td {
-        border-bottom: none;
+    .row-diff td {
+        background: rgba(251, 191, 36, 0.03);
     }
 
-    .diff-positive {
-        color: var(--color-text);
-        font-weight: 500;
-    }
-
-    .diff-negative {
-        color: var(--color-negative);
-        font-weight: 500;
-    }
-
-    .feature-bar-wrap {
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
-        width: 100%;
-        max-width: 200px;
-    }
-    
-    .feature-bar {
-        height: 6px;
-        border-radius: 3px;
-        min-width: 2px;
-        transition: width 0.5s ease-out;
-    }
-
-    .feature-bar.model1 {
-        background: var(--color-accent);
-    }
-
-    .feature-bar.model2 {
-        background: var(--color-success, #10b981);
-    }
+    .text-success { color: #34d399 !important; }
+    .text-danger { color: #f87171 !important; }
+    .font-bold { font-weight: 700; }
 
     .compare-actions {
         display: flex;
-        gap: var(--space-3);
         justify-content: flex-end;
+        gap: 16px;
+        margin-top: 24px;
     }
 
-    .alert {
-        padding: var(--space-3) var(--space-4);
-        font-size: 0.875rem;
-        border: 1px solid var(--color-border);
+    .spinner-inline {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
     }
 
-    .alert p {
-        margin: 0;
-    }
-
-    .alert a {
-        color: var(--color-accent);
-        text-decoration: underline;
-    }
-
-    .alert-warning {
-        background: var(--color-bg);
-        color: var(--color-text);
-    }
-
-    .state-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-7) var(--space-5);
-        text-align: center;
-    }
-
-    .state-text {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.875rem;
-    }
-
-    @@media (max-width: 720px) {
-        .compare-selectors {
-            grid-template-columns: 1fr;
-        }
-
-        .compare-table {
-            font-size: 0.8125rem;
-        }
-
-        .compare-table th,
-        .compare-table td {
-            padding: var(--space-3);
-        }
-
-        .compare-actions {
-            flex-direction: column;
-        }
+    @@media (max-width: 1024px) {
+        .selectors-grid { grid-template-columns: 1fr; }
     }
 </style>

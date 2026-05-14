@@ -3,94 +3,103 @@
 @inject IJSRuntime JSRuntime
 @implements IDisposable
 
-<header class="topnav">
-    <div class="topnav-inner">
-        <a href="/" class="topnav-brand">
-            <span class="brand-icon">TW</span>
+<header class="top-nav">
+    <div class="nav-container">
+        <!-- Logo -->
+        <a href="/" class="nav-brand">
+            <span class="brand-icon">⚡</span>
             <span class="brand-text">TrainWise</span>
         </a>
 
-        @if (SessionState.IsAuthenticated)
+        @if (!SessionState.IsAuthenticated)
         {
-            <nav class="topnav-links">
-                <a href="/stats" class="topnav-link @IsActive("/stats", "/dashboard")">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                    Dashboard
-                </a>
-                <a href="/datasets" class="topnav-link @IsActive("/datasets", "/upload")">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    Datasets
-                </a>
-                <a href="/training" class="topnav-link @IsActive("/training", "/train")">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    Training
-                </a>
-                <a href="/experiments" class="topnav-link @IsActive("/experiments", "/history")">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    History
-                </a>
-                <a href="/metrics" class="topnav-link @IsActive("/metrics", "/results")">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    Metrics
-                </a>
-                <a href="/compare" class="topnav-link @IsActive("/compare")">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    Compare
-                </a>
-            </nav>
+            <div class="nav-left-links">
+                <a href="/" class="nav-link @IsActive("/")">Home</a>
+            </div>
+        }
 
-            <div class="topnav-right">
-                <div class="user-menu">
-                    <button class="user-menu-trigger" @onclick="ToggleMenu">
-                        <span class="user-avatar">@(SessionState.Username?.Substring(0, 1).ToUpper())</span>
+        <!-- Links (Center) -->
+        <nav class="nav-links">
+            @if (SessionState.IsAuthenticated)
+            {
+                <a href="/" class="nav-link @IsActive("/")">Home</a>
+                <a href="/dashboard" class="nav-link @IsActive("/dashboard", "/stats")">Dashboard</a>
+                <a href="/datasets" class="nav-link @IsActive("/datasets", "/upload")">Datasets</a>
+                <a href="/training" class="nav-link @IsActive("/training", "/train")">Training</a>
+                <a href="/experiments" class="nav-link @IsActive("/experiments", "/history")">History</a>
+                <a href="/compare" class="nav-link @IsActive("/compare", "/experiments/compare")">Compare</a>
+                <a href="/metrics" class="nav-link @IsActive("/metrics")">Metrics</a>
+            }
+        </nav>
+
+        <!-- User/Auth (Right) -->
+        <div class="nav-user">
+            @if (SessionState.IsAuthenticated)
+            {
+                <div class="user-dropdown-container">
+                    <button class="user-trigger" @onclick="ToggleDropdown">
+                        <div class="user-avatar">
+                            @(SessionState.Username?.Substring(0, 1).ToUpper() ?? "U")
+                        </div>
                         <span class="user-name">@SessionState.Username</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                        <span class="dropdown-chevron">▼</span>
                     </button>
-                    @if (_showMenu)
+
+                    @if (_isDropdownOpen)
                     {
-                        <div class="user-dropdown">
-                            <a href="/profile" class="dropdown-item" @onclick="CloseMenu">Profile</a>
-                            <a href="/settings" class="dropdown-item" @onclick="CloseMenu">Settings</a>
-                            <hr class="dropdown-divider" />
-                            <button class="dropdown-item dropdown-danger" @onclick="LogoutAsync">Logout</button>
+                        <div class="user-dropdown animate-fade-up">
+                            <div class="dropdown-header">
+                                <p class="user-display">@SessionState.Username</p>
+                                <p class="user-role">Premium Workspace</p>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="/profile" class="dropdown-item" @onclick="CloseDropdown">👤 Profile</a>
+                            <a href="/settings" class="dropdown-item" @onclick="CloseDropdown">⚙️ Settings</a>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item text-danger" @onclick="LogoutAsync">🚪 Logout</button>
                         </div>
                     }
                 </div>
-            </div>
-        }
-        else
-        {
-            <nav class="topnav-links topnav-links-right">
-                <a href="/" class="topnav-link @IsActive("/")">Home</a>
-                <a href="/login" class="topnav-link">Sign in</a>
-                <a href="/signup" class="button primary small">Sign up</a>
-            </nav>
-        }
+            }
+            else
+            {
+                <a href="/login" class="tw-btn-ghost btn-sm">Sign In</a>
+                <a href="/signup" class="tw-btn-primary btn-sm">Get Started</a>
+            }
+        </div>
     </div>
 </header>
 
+@if (_isDropdownOpen)
+{
+    <div class="dropdown-overlay" @onclick="CloseDropdown"></div>
+}
+
 @code {
     private string _currentRelativePath = "";
-    private bool _showMenu = false;
+    private bool _isDropdownOpen = false;
+
+    private void ToggleDropdown() => _isDropdownOpen = !_isDropdownOpen;
+    private void CloseDropdown() => _isDropdownOpen = false;
 
     private string IsActive(params string[] paths)
     {
-        if (string.IsNullOrWhiteSpace(_currentRelativePath))
-        {
-            return paths.Any(path => path == "/") ? "active" : "";
-        }
-
-        var currentPath = "/" + _currentRelativePath.Trim('/');
+        var currentPath = string.IsNullOrEmpty(_currentRelativePath) ? "/" : "/" + _currentRelativePath.Trim('/');
 
         foreach (var path in paths)
         {
+            if (path == "/")
+            {
+                if (currentPath == "/") return "active";
+                continue;
+            }
+
             var normalizedPath = path.TrimEnd('/');
             if (string.Equals(currentPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
             {
                 return "active";
             }
-            if (normalizedPath != "/" &&
-                currentPath.StartsWith(normalizedPath + "/", StringComparison.OrdinalIgnoreCase))
+            if (currentPath.StartsWith(normalizedPath + "/", StringComparison.OrdinalIgnoreCase))
             {
                 return "active";
             }
@@ -107,8 +116,8 @@
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        _showMenu = false;
         UpdateCurrentPath();
+        _isDropdownOpen = false;
         StateHasChanged();
     }
 
@@ -117,12 +126,9 @@
         _currentRelativePath = NavManager.ToBaseRelativePath(NavManager.Uri).Split('?', '#')[0] ?? "";
     }
 
-    private void ToggleMenu() => _showMenu = !_showMenu;
-    private void CloseMenu() => _showMenu = false;
-
     private async Task LogoutAsync()
     {
-        _showMenu = false;
+        _isDropdownOpen = false;
         SessionState.Clear();
         await SessionState.ClearStorageAsync(JSRuntime);
         NavManager.NavigateTo("/login", forceLoad: true);
@@ -136,263 +142,222 @@
 }
 
 <style>
-    .topnav {
+    .top-nav {
         position: sticky;
         top: 0;
         z-index: 1000;
-        background: rgba(247,245,240,0.94);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-bottom: 1px solid var(--brd);
+        height: 64px;
+        background: var(--bg-navbar);
+        border-bottom: 1px solid var(--border-subtle);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        display: flex;
+        align-items: center;
+        padding: 0 40px;
     }
 
-    .topnav-inner {
-        max-width: var(--content-max);
+    .nav-container {
+        width: 100%;
+        max-width: 1440px;
         margin: 0 auto;
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: var(--space-4);
-        padding: 0 var(--space-5);
-        min-height: 64px;
-        padding-top: 8px;
-        padding-bottom: 8px;
-        flex-wrap: wrap;
     }
 
-    .topnav-brand {
+    .nav-brand {
         display: flex;
         align-items: center;
-        gap: var(--space-2);
+        gap: 10px;
         text-decoration: none;
         flex-shrink: 0;
     }
 
     .brand-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        background: var(--acc);
-        color: #FFFFFF;
-        font-family: var(--mono);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        border-radius: 8px;
+        font-size: 1.5rem;
+        filter: drop-shadow(0 0 10px rgba(129, 140, 248, 0.4));
     }
 
     .brand-text {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--txt);
+        font-size: 1.35rem;
+        font-weight: 800;
+        background: var(--accent-grad);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.8px;
     }
 
-    .topnav-brand:hover {
-        text-decoration: none;
-    }
-
-    .topnav-links {
-        display: flex;
-        align-items: center;
-        gap: 6px;
+    .nav-left-links {
+        margin-left: 32px;
         flex: 1;
-        overflow-x: auto;
-        white-space: nowrap;
-        scrollbar-width: none;
     }
 
-    .topnav-links::-webkit-scrollbar {
-        display: none;
-    }
-
-    .topnav-links-right {
-        flex: none;
-        margin-left: auto;
-        gap: var(--space-3);
-    }
-
-    .topnav-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 12px;
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--mut);
-        text-decoration: none;
-        border: 1px solid transparent;
-        border-radius: 8px;
-        transition: color .15s, border-color .15s, background .15s;
-    }
-
-    .topnav-link svg {
-        opacity: 0.6;
-    }
-
-    .topnav-link:hover {
-        color: var(--txt);
-        text-decoration: none;
-        border-color: var(--acc-b);
-        background: var(--acc-s);
-    }
-
-    .topnav-link:hover svg {
-        opacity: 1;
-    }
-
-    .topnav-link.active {
-        color: var(--acc);
-        border-color: var(--acc-b);
-        background: var(--acc-s);
-    }
-
-    .topnav-link.active svg {
-        opacity: 1;
-    }
-
-    .topnav-right {
-        margin-left: auto;
+    .nav-links {
         display: flex;
         align-items: center;
+        gap: 4px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 4px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .nav-link {
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        border-radius: 8px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .nav-link:hover {
+        color: var(--text-h1);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-link.active {
+        color: var(--text-h1);
+        background: var(--accent-grad);
+        box-shadow: 0 4px 12px rgba(129, 140, 248, 0.2);
+    }
+
+    .nav-user {
+        display: flex;
+        align-items: center;
+        gap: 12px;
         flex-shrink: 0;
     }
 
-    /* User dropdown menu */
-    .user-menu {
+    .user-dropdown-container {
         position: relative;
     }
 
-    .user-menu-trigger {
+    .user-trigger {
+        background: none;
+        border: 1px solid var(--border-subtle);
+        padding: 4px 12px 4px 4px;
+        border-radius: 50px;
         display: flex;
         align-items: center;
-        gap: var(--space-2);
-        padding: 4px 8px;
-        background: transparent;
-        border: 1px solid transparent;
+        gap: 10px;
         cursor: pointer;
-        color: var(--txt);
+        transition: all 0.2s ease;
     }
 
-    .user-menu-trigger:hover {
-        border-color: var(--brd);
+    .user-trigger:hover {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--border-active);
     }
 
     .user-avatar {
-        display: inline-flex;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--accent-grad);
+        display: flex;
         align-items: center;
         justify-content: center;
-        width: 26px;
-        height: 26px;
-        background: var(--acc-s);
-        border: 1px solid var(--acc-b);
-        color: var(--acc);
-        font-size: 12px;
-        font-weight: 700;
-        font-family: var(--mono);
+        font-weight: 800;
+        font-size: 0.85rem;
+        color: white;
     }
 
     .user-name {
-        font-size: 13px;
-        font-weight: 500;
+        font-size: 0.85rem;
+        color: var(--text-h1);
+        font-weight: 600;
+    }
+
+    .dropdown-chevron {
+        font-size: 0.6rem;
+        color: var(--text-muted);
+        transition: transform 0.3s ease;
     }
 
     .user-dropdown {
         position: absolute;
-        top: calc(100% + 4px);
+        top: calc(100% + 12px);
         right: 0;
-        min-width: 160px;
-        background: var(--surf);
-        border: 1px solid var(--brd);
-        padding: var(--space-1) 0;
-        z-index: 100;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        animation: dropIn 0.12s ease-out;
+        width: 220px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-active);
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        backdrop-filter: blur(20px);
     }
 
-    @@keyframes dropIn {
-        from { opacity: 0; transform: translateY(-4px); }
-        to { opacity: 1; transform: translateY(0); }
+    .dropdown-header {
+        padding: 12px 16px;
     }
 
-    .dropdown-item {
-        display: block;
-        width: 100%;
-        padding: 8px 14px;
-        font-size: 13px;
-        color: var(--txt);
-        text-decoration: none;
-        text-align: left;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        font-family: var(--sans);
+    .user-display {
+        margin: 0;
+        font-weight: 700;
+        color: var(--text-h1);
+        font-size: 0.9rem;
     }
 
-    .dropdown-item:hover {
-        background: var(--bg);
-        text-decoration: none;
-    }
-
-    .dropdown-danger {
-        color: var(--color-negative);
+    .user-role {
+        margin: 0;
+        font-size: 0.7rem;
+        color: var(--accent-violet);
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 1px;
     }
 
     .dropdown-divider {
+        height: 1px;
+        background: var(--border-subtle);
+        margin: 4px 0;
+    }
+
+    .dropdown-item {
+        padding: 10px 16px;
+        border-radius: 10px;
+        color: var(--text-body);
+        font-size: 0.9rem;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: none;
         border: none;
-        border-top: 1px solid var(--brd);
-        margin: var(--space-1) 0;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s ease;
     }
 
-    @@media (max-width: 900px) {
-        .topnav-inner {
-            padding: 0 var(--space-3);
-            gap: var(--space-2);
-            flex-wrap: wrap;
-            height: auto;
-            min-height: 56px;
-            padding-top: var(--space-2);
-            padding-bottom: var(--space-2);
-        }
-
-        .topnav-links {
-            order: 3;
-            flex: 1 1 100%;
-            gap: 0;
-        }
-
-        .topnav-link svg {
-            display: none;
-        }
-
-        .topnav-links-right {
-            order: 2;
-            flex: none;
-            margin-left: auto;
-        }
-
-        .topnav-right {
-            order: 2;
-        }
-
-        .brand-text {
-            display: none;
-        }
+    .dropdown-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-h1);
+        padding-left: 20px;
     }
-    @@media (max-width: 960px) {
-        .topnav-inner {
-            padding-left: var(--space-3);
-            padding-right: var(--space-3);
-        }
 
-        .topnav-links {
-            order: 3;
-            width: 100%;
-            padding-bottom: 4px;
-        }
+    .dropdown-item.text-danger:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
 
-        .user-name {
-            display: none;
-        }
+    .dropdown-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+    }
+
+    .btn-sm {
+        padding: 8px 20px !important;
+        font-size: 0.85rem !important;
+    }
+
+    @@media (max-width: 1100px) {
+        .nav-links { display: none; }
     }
 </style>

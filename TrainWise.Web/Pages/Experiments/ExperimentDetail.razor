@@ -7,136 +7,144 @@
 @using TrainWise.Web.Components.Common
 @using ExperimentModel = TrainWise.Web.Models.ExperimentDetail
 
-
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="alert alert-warning">
-        <p>Please <a href="/login">sign in</a> to view experiments.</p>
-    </div>
-}
-else if (_isLoading)
-{
-    <div class="state-card">
-        <div class="loading-spinner"></div>
-        <p class="state-text">Loading experiment details…</p>
-    </div>
-}
-else if (_experiment is null)
-{
-    <div class="state-card empty">
-        <h3>Experiment not found</h3>
-        <p class="state-text">The experiment you're looking for doesn't exist.</p>
-        <a href="/experiments" class="button primary">Back to history</a>
-    </div>
-}
-else
-{
-    <div class="page-header">
-        <div>
-            <h1>@_experiment.ModelName</h1>
-            <p class="page-desc">@_experiment.TaskType experiment on @_experiment.DatasetName</p>
+<div class="experiment-detail-page">
+    @if (!SessionState.IsAuthenticated)
+    {
+        <div class="tw-card animate-fade-up">
+            <p>Please <a href="/login">sign in</a> to view experiment results.</p>
         </div>
-        <div class="page-actions">
-            <button class="button ghost" @onclick="ExportAsync">Export</button>
+    }
+    else if (_isLoading)
+    {
+        <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
+            <div class="loading-spinner"></div>
+            <p class="stat-label" style="margin-top: 16px;">Generating Model Report...</p>
         </div>
-    </div>
+    }
+    else if (_experiment is null)
+    {
+        <div class="tw-card empty-state animate-fade-up">
+            <div class="empty-icon">⚠️</div>
+            <h3>Experiment Not Found</h3>
+            <p class="subtitle">The requested training run could not be located in your history.</p>
+            <button class="tw-btn-primary" style="margin-top: 24px;" @onclick='() => NavManager.NavigateTo("/experiments")'>Back to History</button>
+        </div>
+    }
+    else
+    {
+        <section class="tw-section-header animate-fade-up">
+            <h1 class="text-gradient">@_experiment.ModelName</h1>
+            <p class="subtitle">Analysis of the @_experiment.TaskType model trained on <strong>@_experiment.DatasetName</strong>.</p>
+            <div class="header-actions">
+                <button class="tw-btn-ghost" @onclick="ExportAsync">📤 Export JSON</button>
+                <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/experiments/compare")'>⚖️ Compare Run</button>
+            </div>
+        </section>
 
-    <div class="detail-layout">
-        <div class="detail-row">
-            <div class="detail-card">
-                <h3>Configuration</h3>
-                <div class="config-grid">
-                    <div class="config-item">
-                        <span class="config-label">Model</span>
-                        <span class="config-value">@_experiment.ModelName</span>
+        <!-- PERFORMANCE DASHBOARD -->
+        <div class="performance-grid animate-fade-up">
+            <div class="tw-stat-card">
+                <span class="stat-label">Accuracy Score</span>
+                <span class="stat-number">@(_experiment.Metrics?.Accuracy.ToString("P1") ?? "N/A")</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">Precision</span>
+                <span class="stat-number">@(_experiment.Metrics?.Precision.ToString("P1") ?? "N/A")</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">Recall</span>
+                <span class="stat-number">@(_experiment.Metrics?.Recall.ToString("P1") ?? "N/A")</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">F1-Score</span>
+                <span class="stat-number">@(_experiment.Metrics?.F1Score.ToString("P1") ?? "N/A")</span>
+            </div>
+        </div>
+
+        <div class="report-grid">
+            <div class="report-main animate-fade-up">
+                <div class="tw-card">
+                    <h3>⚙️ Model Configuration</h3>
+                    <div class="config-details">
+                        <div class="detail-item">
+                            <label>Training Duration</label>
+                            <span class="tw-mono">@(_experiment.TrainingDurationSec?.ToString("F2") ?? "0.00") seconds</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Completion Date</label>
+                            <span>@_experiment.CreatedAt.ToString("MMMM dd, yyyy • HH:mm")</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Execution Status</label>
+                            <span class="tw-badge success">Completed</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Task Category</label>
+                            <span class="tw-badge info">@_experiment.TaskType</span>
+                        </div>
                     </div>
-                    <div class="config-item">
-                        <span class="config-label">Task type</span>
-                        <span class="config-value"><span class="tag">@_experiment.TaskType</span></span>
-                    </div>
-                    <div class="config-item">
-                        <span class="config-label">Dataset</span>
-                        <span class="config-value">@_experiment.DatasetName</span>
-                    </div>
-                    <div class="config-item">
-                        <span class="config-label">Created</span>
-                        <span class="config-value">@_experiment.CreatedAt.ToString("MMM dd, yyyy HH:mm")</span>
+                </div>
+
+                <div class="tw-card">
+                    <h3>🧪 Hyperparameters</h3>
+                    <div class="params-container">
+                        @if (_experiment.HyperParameters?.Any() == true)
+                        {
+                            <table class="params-table">
+                                <thead>
+                                    <tr>
+                                        <th>Parameter</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var param in _experiment.HyperParameters)
+                                    {
+                                        <tr>
+                                            <td class="param-name">@param.Key</td>
+                                            <td class="param-value tw-mono">@FormatHyperparamValue(param.Value)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <p class="text-muted">Standard default configuration used for this run.</p>
+                        }
                     </div>
                 </div>
             </div>
 
-            <div class="detail-card">
-                <h3>Performance</h3>
-                <div class="metrics-grid">
-                    @if (_experiment.Metrics is not null)
-                    {
-                        <div class="metric-item">
-                            <span class="metric-label">Accuracy</span>
-                            <span class="metric-value">@(_experiment.Metrics.Accuracy.ToString("0.00%"))</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Precision</span>
-                            <span class="metric-value">@(_experiment.Metrics.Precision.ToString("0.00%"))</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Recall</span>
-                            <span class="metric-value">@(_experiment.Metrics.Recall.ToString("0.00%"))</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">F1 score</span>
-                            <span class="metric-value">@(_experiment.Metrics.F1Score.ToString("0.00%"))</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Duration</span>
-                            <span class="metric-value">@(_experiment.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">Status</span>
-                            <span class="metric-value"><span class="badge success">Completed</span></span>
-                        </div>
-                    }
+            <div class="report-sidebar animate-fade-up" style="animation-delay: 0.1s;">
+                <div class="tw-card action-card">
+                    <h3>Next Steps</h3>
+                    <div class="action-list">
+                        <button class="tw-btn-primary btn-full" @onclick='() => NavManager.NavigateTo($"/results/{Id}/recommendations")'>
+                            💡 Get AI Insights
+                        </button>
+                        <button class="tw-btn-ghost btn-full" @onclick="ExportAsync">
+                            📥 Download Report
+                        </button>
+                        <button class="tw-btn-ghost btn-full" @onclick='() => NavManager.NavigateTo("/experiments")'>
+                            🔙 Back to History
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tw-card tip-card">
+                    <span class="tip-icon">💡</span>
+                    <p class="tip-text">This model shows high precision but lower recall. Consider adjusting the <strong>decision threshold</strong> or applying <strong>SMOTE</strong> if you have imbalanced classes.</p>
                 </div>
             </div>
         </div>
-
-        <div class="detail-card">
-            <h3>Hyperparameters</h3>
-            <div class="params-list">
-                @if (_experiment.HyperParameters?.Any() == true)
-                {
-                    @foreach (var param in _experiment.HyperParameters)
-                    {
-                        <div class="param-row">
-                            <span class="param-name">@param.Key</span>
-                            <span class="param-value mono">@FormatHyperparamValue(param.Value)</span>
-                        </div>
-                    }
-                }
-                else
-                {
-                    <div class="param-row">
-                        <span class="param-name">No hyperparameters configured</span>
-                    </div>
-                }
-            </div>
-        </div>
-
-        <div class="detail-actions">
-            <a href="/experiments" class="button ghost">Back to history</a>
-            <a href="/experiments/compare" class="button ghost">Compare</a>
-            <a href="/results/@(Id)/recommendations" class="button ghost">View recommendations</a>
-            <button class="button primary" @onclick="ExportAsync">Download results</button>
-        </div>
-    </div>
-}
+    }
+</div>
 
 @code {
-    [Parameter]
-    public string? Id { get; set; }
-
+    [Parameter] public string? Id { get; set; }
     private ExperimentModel? _experiment;
     private bool _isLoading = true;
-    private List<BreadcrumbItem> _breadcrumbs = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -145,7 +153,6 @@ else
             _isLoading = false;
             return;
         }
-
         await LoadExperimentDetails();
     }
 
@@ -153,18 +160,10 @@ else
     {
         try
         {
-            if (!Guid.TryParse(Id, out var experimentId))
+            if (Guid.TryParse(Id, out var experimentId))
             {
-                return;
+                _experiment = await ExperimentApi.GetAsync(experimentId);
             }
-
-            _experiment = await ExperimentApi.GetAsync(experimentId);
-
-            _breadcrumbs = new()
-            {
-                new BreadcrumbItem { Label = "History", Url = "/experiments" },
-                new BreadcrumbItem { Label = _experiment?.ModelName ?? "Experiment" }
-            };
         }
         catch (Exception ex)
         {
@@ -182,236 +181,143 @@ else
         {
             return je.ValueKind switch
             {
-                System.Text.Json.JsonValueKind.Null => "Not set",
-                System.Text.Json.JsonValueKind.True => "true",
-                System.Text.Json.JsonValueKind.False => "false",
+                System.Text.Json.JsonValueKind.Null => "None",
+                System.Text.Json.JsonValueKind.True => "True",
+                System.Text.Json.JsonValueKind.False => "False",
                 _ => je.ToString()
             };
         }
-        return value?.ToString() ?? "Not set";
+        return value?.ToString() ?? "Default";
     }
 
     private async Task ExportAsync()
     {
-        try
-        {
-            if (_experiment is null) return;
-
-            var json = System.Text.Json.JsonSerializer.Serialize(_experiment, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-            await JSRuntime.InvokeVoidAsync("downloadFile", bytes, $"experiment_{Id}_results.json");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error exporting experiment");
-        }
+        if (_experiment is null) return;
+        var json = System.Text.Json.JsonSerializer.Serialize(_experiment, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+        await JSRuntime.InvokeVoidAsync("downloadFile", bytes, $"trainwise_report_{_experiment.ModelName?.ToLower() ?? "model"}_{(Id?.Length >= 8 ? Id[..8] : "run")}.json");
     }
 }
 
 <style>
-    .page-header {
+    .experiment-detail-page {
         display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: var(--space-5);
-        margin-bottom: var(--space-6);
-        flex-wrap: wrap;
+        flex-direction: column;
+        gap: 32px;
     }
 
-    .page-header h1 {
-        font-family: var(--font-ui);
-        font-size: 1.75rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-1);
-        color: var(--color-text);
-    }
-
-    .page-desc {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.9375rem;
-    }
-
-    .page-actions {
-        flex-shrink: 0;
-    }
-
-    .detail-layout {
+    .performance-grid {
         display: grid;
-        gap: var(--space-5);
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
     }
 
-    .detail-row {
+    .report-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 32px;
+        align-items: start;
+    }
+
+    .report-main {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .report-main h3, .report-sidebar h3 {
+        font-size: 1.1rem;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .config-details {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: var(--space-5);
+        gap: 24px;
     }
 
-    .detail-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-5);
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 
-    .detail-card h3 {
-        font-family: var(--font-ui);
+    .detail-item label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-item span {
         font-size: 1rem;
         font-weight: 500;
-        margin: 0 0 var(--space-4);
-        color: var(--color-text);
+        color: var(--text-h1);
     }
 
-    .config-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-3);
+    .params-container {
+        background: var(--bg-surface);
+        border-radius: 12px;
+        border: 1px solid var(--border-subtle);
+        overflow: hidden;
     }
 
-    .config-item {
+    .params-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .params-table th {
+        text-align: left;
+        padding: 12px 20px;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .params-table td {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+        color: var(--text-body);
+        border-top: 1px solid var(--border-subtle);
+    }
+
+    .param-name { font-weight: 600; color: var(--text-h1); }
+
+    .action-list {
         display: flex;
         flex-direction: column;
-        gap: var(--space-1);
-        padding: var(--space-3);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg);
+        gap: 12px;
     }
 
-    .config-label {
-        font-size: 0.75rem;
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 500;
+    .btn-full { width: 100%; justify-content: center; }
+
+    .tip-card {
+        background: var(--accent-grad);
+        padding: 1px;
+        border: none;
     }
 
-    .config-value {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--color-text);
+    .tip-card::after {
+        content: '';
+        position: absolute;
+        inset: 1px;
+        background: var(--bg-surface);
+        border-radius: 15px;
+        z-index: 0;
     }
 
-    .metrics-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-3);
-    }
+    .tip-icon { font-size: 1.5rem; position: relative; z-index: 1; }
+    .tip-text { font-size: 0.85rem; color: var(--text-body); line-height: 1.6; margin: 0; position: relative; z-index: 1; }
 
-    .metric-item {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-1);
-        padding: var(--space-4);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg);
-    }
-
-    .metric-label {
-        font-size: 0.75rem;
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 500;
-    }
-
-    .metric-value {
-        font-size: 1.25rem;
-        font-weight: 500;
-        color: var(--color-accent);
-        font-family: var(--font-mono);
-    }
-
-    .params-list {
-        display: grid;
-        gap: var(--space-1);
-    }
-
-    .param-row {
-        display: flex;
-        justify-content: space-between;
-        padding: var(--space-2) var(--space-3);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg);
-    }
-
-    .param-name {
-        font-weight: 500;
-        font-size: 0.875rem;
-        color: var(--color-text);
-    }
-
-    .param-value {
-        font-size: 0.875rem;
-        color: var(--color-text-secondary);
-    }
-
-    .param-value.mono {
-        font-family: var(--font-mono);
-        font-size: 0.8125rem;
-    }
-
-    .detail-actions {
-        display: flex;
-        gap: var(--space-3);
-        justify-content: flex-end;
-    }
-
-    .alert {
-        padding: var(--space-3) var(--space-4);
-        font-size: 0.875rem;
-        border: 1px solid var(--color-border);
-    }
-
-    .alert p {
-        margin: 0;
-    }
-
-    .alert a {
-        color: var(--color-accent);
-        text-decoration: underline;
-    }
-
-    .alert-warning {
-        background: var(--color-bg);
-        color: var(--color-text);
-    }
-
-    .state-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-7) var(--space-5);
-        text-align: center;
-    }
-
-    .state-card.empty h3 {
-        font-family: var(--font-ui);
-        font-size: 1.125rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-2);
-        color: var(--color-text);
-    }
-
-    .state-text {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.875rem;
-    }
-
-    .state-card .button {
-        margin-top: var(--space-4);
-    }
-
-    @@media (max-width: 720px) {
-        .detail-row {
-            grid-template-columns: 1fr;
-        }
-
-        .config-grid,
-        .metrics-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .detail-actions {
-            flex-direction: column;
-        }
+    @@media (max-width: 1200px) {
+        .performance-grid { grid-template-columns: repeat(2, 1fr); }
+        .report-grid { grid-template-columns: 1fr; }
+        .config-details { grid-template-columns: 1fr; }
     }
 </style>

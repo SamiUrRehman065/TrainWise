@@ -3,433 +3,254 @@
 @inject NavigationManager NavManager
 @using TrainWise.Web.Components.Common
 
+<div class="settings-page animate-fade-up">
+    <section class="tw-section-header">
+        <h1 class="text-gradient">Settings</h1>
+        <p class="subtitle">Customize your workspace environment and security protocols.</p>
+    </section>
 
-<div class="page-header">
-    <h1>Settings</h1>
-    <p class="page-desc">Manage your workspace preferences and security.</p>
-</div>
-
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="alert alert-warning">
-        <p>Please <a href="/login">sign in</a> to access settings.</p>
-    </div>
-}
-else
-{
-    <div class="settings-layout">
-        <aside class="settings-sidebar">
-            <nav class="settings-nav">
-                <a href="#general" class="settings-link @(_activeTab == "general" ? "active" : "")" @onclick='() => SetTab("general")'>
-                    General
-                </a>
-                <a href="#notifications" class="settings-link @(_activeTab == "notifications" ? "active" : "")" @onclick='() => SetTab("notifications")'>
-                    Notifications
-                </a>
-                <a href="#security" class="settings-link @(_activeTab == "security" ? "active" : "")" @onclick='() => SetTab("security")'>
-                    Security
-                </a>
-                <a href="#storage" class="settings-link @(_activeTab == "storage" ? "active" : "")" @onclick='() => SetTab("storage")'>
-                    Storage
-                </a>
-            </nav>
-        </aside>
-
-        <div class="settings-content">
-            @if (_activeTab == "general")
-            {
-                <div class="settings-section">
-                    <h2>General</h2>
-                    <p class="section-desc">Customize your workspace experience.</p>
-
-                    <div class="settings-group">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-name">Theme</span>
-                                <span class="setting-desc">Choose your preferred color scheme</span>
-                            </div>
-                            <select @bind="_theme">
-                                <option value="light">Light</option>
-                                <option value="dark">Dark</option>
-                                <option value="auto">Auto</option>
-                            </select>
-                        </div>
-
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-name">Default model task</span>
-                                <span class="setting-desc">Pre-select task type when creating training jobs</span>
-                            </div>
-                            <select @bind="_defaultTask">
-                                <option value="">None</option>
-                                <option value="classification">Classification</option>
-                                <option value="regression">Regression</option>
-                            </select>
-                        </div>
-
-                        <div class="setting-item checkbox-item">
-                            <input type="checkbox" @bind="_autoArchive" />
-                            <div class="setting-info">
-                                <span class="setting-name">Auto-archive old datasets</span>
-                                <span class="setting-desc">Automatically archive datasets older than 30 days</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="button primary">Save changes</button>
-                </div>
-            }
-            else if (_activeTab == "notifications")
-            {
-                <div class="settings-section">
-                    <h2>Notifications</h2>
-                    <p class="section-desc">Control how and when you receive updates.</p>
-
-                    <div class="settings-group">
-                        <div class="setting-item checkbox-item">
-                            <input type="checkbox" @bind="_emailTrainingComplete" />
-                            <div class="setting-info">
-                                <span class="setting-name">Training complete</span>
-                                <span class="setting-desc">Email notification when training job finishes</span>
-                            </div>
-                        </div>
-
-                        <div class="setting-item checkbox-item">
-                            <input type="checkbox" @bind="_emailWeeklySummary" />
-                            <div class="setting-info">
-                                <span class="setting-name">Weekly summary</span>
-                                <span class="setting-desc">Receive weekly workspace activity summary</span>
-                            </div>
-                        </div>
-
-                        <div class="setting-item checkbox-item">
-                            <input type="checkbox" @bind="_pushNotifications" />
-                            <div class="setting-info">
-                                <span class="setting-name">Push notifications</span>
-                                <span class="setting-desc">Browser push notifications for important events</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="button primary">Save preferences</button>
-                </div>
-            }
-            else if (_activeTab == "security")
-            {
-                <div class="settings-section">
-                    <h2>Security</h2>
-                    <p class="section-desc">Manage account security and access control.</p>
-
-                    <div class="settings-group">
-                        <div class="setting-item action-item">
-                            <div class="setting-info">
-                                <span class="setting-name">Password</span>
-                                <span class="setting-desc">Change your account password</span>
-                            </div>
-                            <button class="button ghost">Change password</button>
-                        </div>
-
-                        <div class="setting-item action-item">
-                            <div class="setting-info">
-                                <span class="setting-name">Two-factor authentication</span>
-                                <span class="setting-desc">Add extra security to your account</span>
-                            </div>
-                            <button class="button ghost">Enable 2FA</button>
-                        </div>
-
-                        <div class="setting-item action-item">
-                            <div class="setting-info">
-                                <span class="setting-name">Active sessions</span>
-                                <span class="setting-desc">Current: 1 session</span>
-                            </div>
-                            <button class="button ghost">View sessions</button>
-                        </div>
-                    </div>
-
-                    <div class="danger-zone">
-                        <h3>Danger zone</h3>
-                        <button class="button ghost" style="color: var(--color-negative); border-color: var(--color-negative);">Delete account</button>
-                    </div>
-                </div>
-            }
-            else if (_activeTab == "storage")
-            {
-                <div class="settings-section">
-                    <h2>Storage</h2>
-                    <p class="section-desc">Manage dataset storage and archival policies.</p>
-
-                    <div class="settings-group">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-name">Storage mode</span>
-                                <span class="setting-desc">Current: Disk</span>
-                            </div>
-                        </div>
-
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-name">Archive after (days)</span>
-                                <span class="setting-desc">Auto-archive datasets older than this many days</span>
-                            </div>
-                            <input type="number" @bind="_archiveDays" min="1" max="365" />
-                        </div>
-
-                        <div class="setting-item action-item">
-                            <div class="setting-info">
-                                <span class="setting-name">Archive old datasets now</span>
-                                <span class="setting-desc">Immediately archive all datasets older than the threshold</span>
-                            </div>
-                            <button class="button ghost">Archive</button>
-                        </div>
-                    </div>
-
-                    <button class="button primary">Save storage settings</button>
-                </div>
-            }
+    @if (!SessionState.IsAuthenticated)
+    {
+        <div class="tw-card">
+            <p>Please <a href="/login">sign in</a> to access settings.</p>
         </div>
-    </div>
-}
+    }
+    else
+    {
+        <div class="settings-layout">
+            <aside class="settings-sidebar">
+                <nav class="settings-nav">
+                    <button class="nav-item @(_activeTab == "general" ? "active" : "")" @onclick='() => SetTab("general")'>
+                        <span class="nav-icon">⚙️</span> General
+                    </button>
+                    <button class="nav-item @(_activeTab == "security" ? "active" : "")" @onclick='() => SetTab("security")'>
+                        <span class="nav-icon">🛡️</span> Security
+                    </button>
+                    <button class="nav-item @(_activeTab == "storage" ? "active" : "")" @onclick='() => SetTab("storage")'>
+                        <span class="nav-icon">💾</span> Storage
+                    </button>
+                </nav>
+            </aside>
+
+            <div class="settings-content">
+                @if (_activeTab == "general")
+                {
+                    <div class="tw-card settings-section animate-fade-up">
+                        <h2>General Preferences</h2>
+                        <div class="settings-group">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label">Interface Theme</span>
+                                    <span class="setting-desc">Adjust the visual appearance of the workspace.</span>
+                                </div>
+                                <select class="tw-input" @bind="_theme">
+                                    <option value="dark">Deep Navy (Default)</option>
+                                    <option value="light">Classic Light</option>
+                                    <option value="system">System Preference</option>
+                                </select>
+                            </div>
+
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label">Default Task Type</span>
+                                    <span class="setting-desc">Preferred ML task for new training sessions.</span>
+                                </div>
+                                <select class="tw-input" @bind="_defaultTask">
+                                    <option value="classification">Classification</option>
+                                    <option value="regression">Regression</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="tw-btn-primary">Save Changes</button>
+                    </div>
+                }
+                else if (_activeTab == "security")
+                {
+                    <div class="tw-card settings-section animate-fade-up">
+                        <h2>Security & Privacy</h2>
+                        <div class="settings-group">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label">Authentication Token</span>
+                                    <span class="setting-desc">Your unique identifier for API requests.</span>
+                                </div>
+                                <code class="tw-mono">@(SessionState.SessionToken?.Length > 12 ? SessionState.SessionToken[..12] : "********")****</code>
+                            </div>
+
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label">Password</span>
+                                    <span class="setting-desc">Update your login credentials.</span>
+                                </div>
+                                <button class="tw-btn-ghost">Update Password</button>
+                            </div>
+                        </div>
+
+                        <div class="danger-zone">
+                            <h3 class="text-danger">Danger Zone</h3>
+                            <p class="setting-desc">Irreversible account actions.</p>
+                            <button class="tw-btn-ghost text-danger">Deactivate Workspace</button>
+                        </div>
+                    </div>
+                }
+                else if (_activeTab == "storage")
+                {
+                    <div class="tw-card settings-section animate-fade-up">
+                        <h2>Storage Management</h2>
+                        <div class="settings-group">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label">Auto-Archive Policy</span>
+                                    <span class="setting-desc">Datasets older than this many days will be archived.</span>
+                                </div>
+                                <input type="number" class="tw-input" style="width: 100px;" @bind="_archiveDays" min="1" max="365" />
+                            </div>
+
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label">Storage Optimization</span>
+                                    <span class="setting-desc">Compress older training history to save space.</span>
+                                </div>
+                                <label class="tw-switch">
+                                    <input type="checkbox" checked />
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <button class="tw-btn-primary">Apply Policy</button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
 
 @code {
     private string _activeTab = "general";
-    private string _theme = "light";
-    private string _defaultTask = "";
-    private bool _autoArchive = false;
-    private bool _emailTrainingComplete = true;
-    private bool _emailWeeklySummary = true;
-    private bool _pushNotifications = false;
+    private string _theme = "dark";
+    private string _defaultTask = "classification";
     private int _archiveDays = 30;
-    private List<BreadcrumbItem> _breadcrumbs = new()
-    {
-        new BreadcrumbItem { Label = "Settings" }
-    };
 
-    private void SetTab(string tab)
-    {
-        _activeTab = tab;
-    }
+    private void SetTab(string tab) => _activeTab = tab;
 }
 
 <style>
-    .page-header {
-        margin-bottom: var(--space-6);
-    }
-
-    .page-header h1 {
-        font-family: var(--font-ui);
-        font-size: 1.75rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-1);
-        color: var(--color-text);
-    }
-
-    .page-desc {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.9375rem;
+    .settings-page {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
     }
 
     .settings-layout {
         display: grid;
-        grid-template-columns: 200px 1fr;
-        gap: var(--space-6);
+        grid-template-columns: 240px 1fr;
+        gap: 32px;
+        align-items: start;
     }
 
     .settings-sidebar {
         position: sticky;
-        top: 80px;
-        height: fit-content;
+        top: 100px;
     }
 
     .settings-nav {
         display: flex;
         flex-direction: column;
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
+        gap: 8px;
     }
 
-    .settings-link {
-        display: block;
-        padding: var(--space-3) var(--space-4);
-        color: var(--color-text);
-        font-size: 0.9375rem;
-        border-left: 2px solid transparent;
-        text-decoration: none;
+    .nav-item {
+        background: none;
+        border: 1px solid transparent;
+        padding: 12px 20px;
+        border-radius: 12px;
+        color: var(--text-muted);
+        text-align: left;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
-    .settings-link:hover {
-        background: var(--color-bg);
+    .nav-item:hover {
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-h1);
     }
 
-    .settings-link.active {
-        border-left-color: var(--color-accent);
-        background: var(--color-bg);
-        font-weight: 500;
+    .nav-item.active {
+        background: rgba(129, 140, 248, 0.1);
+        border-color: rgba(129, 140, 248, 0.2);
+        color: var(--accent-violet);
     }
+
+    .nav-icon { font-size: 1.1rem; }
 
     .settings-content {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-6);
-        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .settings-section {
+        padding: 40px;
     }
 
     .settings-section h2 {
-        font-family: var(--font-ui);
-        font-size: 1.25rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-1);
-        color: var(--color-text);
-    }
-
-    .section-desc {
-        margin: 0 0 var(--space-5);
-        font-size: 0.9375rem;
-        color: var(--color-text-secondary);
+        font-size: 1.5rem;
+        margin-bottom: 24px;
+        color: var(--text-h1);
     }
 
     .settings-group {
-        display: grid;
-        gap: var(--space-4);
-        margin-bottom: var(--space-5);
-    }
-
-    .setting-item {
         display: flex;
-        align-items: center;
-        gap: var(--space-4);
-        padding: var(--space-4);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg);
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 32px;
     }
 
-    .setting-item.action-item {
+    .setting-row {
+        display: flex;
         justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+        border-bottom: 1px solid var(--border-subtle);
     }
 
-    .setting-item.checkbox-item {
-        cursor: pointer;
-    }
+    .setting-row:last-child { border-bottom: none; }
 
     .setting-info {
         display: flex;
         flex-direction: column;
-        gap: var(--space-1);
-        flex: 1;
+        gap: 4px;
+        max-width: 60%;
     }
 
-    .setting-name {
-        font-weight: 500;
-        font-size: 0.9375rem;
-        color: var(--color-text);
+    .setting-label {
+        color: var(--text-h1);
+        font-weight: 600;
+        font-size: 1rem;
     }
 
     .setting-desc {
-        font-size: 0.8125rem;
-        color: var(--color-text-secondary);
-    }
-
-    .setting-item input[type="checkbox"] {
-        width: auto;
-        flex-shrink: 0;
-    }
-
-    .setting-item input[type="number"],
-    .setting-item select {
-        padding: var(--space-2) var(--space-3);
-        border: 1px solid var(--color-border);
-        border-radius: 0;
-        font-family: var(--font-ui);
-        font-size: 0.875rem;
-        color: var(--color-text);
-        background: var(--color-surface);
-        outline: none;
-    }
-
-    .setting-item input:focus,
-    .setting-item select:focus {
-        border-color: var(--color-accent);
-    }
-
-    .setting-item select {
-        -webkit-appearance: none;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23707060' stroke-width='1.5'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 8px center;
-        padding-right: var(--space-6);
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        line-height: 1.5;
     }
 
     .danger-zone {
-        margin-top: var(--space-6);
-        padding-top: var(--space-6);
-        border-top: 1px solid var(--color-negative);
+        margin-top: 40px;
+        padding-top: 32px;
+        border-top: 1px solid var(--border-subtle);
     }
 
-    .danger-zone h3 {
-        color: var(--color-negative);
-        margin: 0 0 var(--space-3);
-        font-size: 0.8125rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 500;
-    }
+    .danger-zone h3 { font-size: 1.1rem; margin-bottom: 8px; }
 
-    .alert {
-        padding: var(--space-3) var(--space-4);
-        font-size: 0.875rem;
-        border: 1px solid var(--color-border);
-    }
-
-    .alert p {
-        margin: 0;
-    }
-
-    .alert a {
-        color: var(--color-accent);
-        text-decoration: underline;
-    }
-
-    .alert-warning {
-        background: var(--color-bg);
-        color: var(--color-text);
-    }
-
-    @@media (max-width: 720px) {
-        .settings-layout {
-            grid-template-columns: 1fr;
-        }
-
-        .settings-sidebar {
-            position: static;
-        }
-
-        .settings-nav {
-            flex-direction: row;
-            overflow-x: auto;
-        }
-
-        .settings-link {
-            min-width: fit-content;
-            border-left: none;
-            border-bottom: 2px solid transparent;
-            white-space: nowrap;
-        }
-
-        .settings-link.active {
-            border-left: none;
-            border-bottom-color: var(--color-accent);
-        }
-
-        .setting-item {
-            flex-direction: column;
-            gap: var(--space-3);
-            align-items: flex-start;
-        }
-
-        .setting-item input,
-        .setting-item select {
-            width: 100%;
-        }
+    @@media (max-width: 900px) {
+        .settings-layout { grid-template-columns: 1fr; }
+        .settings-sidebar { position: static; }
+        .settings-nav { flex-direction: row; overflow-x: auto; padding-bottom: 8px; }
+        .nav-item { white-space: nowrap; }
     }
 </style>

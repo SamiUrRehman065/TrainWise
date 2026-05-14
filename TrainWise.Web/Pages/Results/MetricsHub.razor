@@ -1,55 +1,72 @@
 @page "/metrics"
 @inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
 @inject TrainWise.Web.Services.State.SessionState SessionState
+@inject NavigationManager NavManager
+@using TrainWise.Web.Components.Common
 
-<div class="page-header">
-    <h1>Metrics</h1>
-    <p class="page-desc">Choose an experiment to view detailed metrics.</p>
-</div>
+<div class="metrics-hub-page animate-fade-up">
+    <section class="tw-section-header">
+        <h1 class="text-gradient">Metrics Hub</h1>
+        <p class="subtitle">Select a completed training session to dive into performance diagnostics and model insights.</p>
+    </section>
 
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="state-card">
-        <div class="state-text">Please <a href="/login">sign in</a> to view metrics.</div>
-    </div>
-}
-else if (_isLoading)
-{
-    <div class="state-card">
-        <div class="loading-spinner"></div>
-        <p class="state-text">Loading experiments...</p>
-    </div>
-}
-else if (_history is null || _history.TrainingHistory.Count == 0)
-{
-    <div class="state-card empty">
-        <h3>No experiments yet</h3>
-        <p class="state-text">Run a training job first to view metrics.</p>
-        <a href="/training" class="button primary">Start training</a>
-    </div>
-}
-else
-{
-    <div class="metrics-list">
-        @foreach (var item in _history.TrainingHistory.OrderByDescending(x => x.CreatedAt))
-        {
-            <div class="metrics-item">
-                <div>
-                    <h4>@item.ModelName</h4>
-                    <p class="meta">
-                        @item.TaskType
-                        @if (!string.IsNullOrWhiteSpace(item.DatasetName))
-                        {
-                            <span> · @item.DatasetName</span>
-                        }
-                        <span> · @item.CreatedAt.ToString("MMM dd, yyyy")</span>
-                    </p>
+    @if (!SessionState.IsAuthenticated)
+    {
+        <div class="tw-card animate-fade-up">
+            <p>Please <a href="/login">sign in</a> to view your metrics repository.</p>
+        </div>
+    }
+    else if (_isLoading)
+    {
+        <div class="tw-card animate-fade-up" style="text-align: center; padding: 80px;">
+            <div class="loading-spinner"></div>
+            <p class="stat-label" style="margin-top: 16px;">Loading Performance Data...</p>
+        </div>
+    }
+    else if (_history is null || _history.TrainingHistory.Count == 0)
+    {
+        <div class="tw-card empty-state animate-fade-up">
+            <div class="empty-icon">📈</div>
+            <h3>No Metrics Available</h3>
+            <p class="subtitle">You haven't completed any training sessions yet.</p>
+            <button class="tw-btn-primary" style="margin-top: 24px;" @onclick='() => NavManager.NavigateTo("/training")'>Start Training Session</button>
+        </div>
+    }
+    else
+    {
+        <div class="metrics-grid">
+            @foreach (var item in _history.TrainingHistory.OrderByDescending(x => x.CreatedAt))
+            {
+                <div class="tw-card metrics-card animate-fade-up" @onclick='() => NavManager.NavigateTo($"/results/{item.ExperimentId}")'>
+                    <div class="metrics-card-header">
+                        <div class="model-info">
+                            <h3>@item.ModelName</h3>
+                            <span class="tw-badge info">@item.TaskType</span>
+                        </div>
+                        <div class="model-date">
+                            @item.CreatedAt.ToString("MMM dd, yyyy")
+                        </div>
+                    </div>
+                    
+                    <div class="metrics-card-body">
+                        <div class="dataset-info">
+                            <span class="label">Dataset:</span>
+                            <span class="value">@(string.IsNullOrEmpty(item.DatasetName) ? "Default Workspace" : item.DatasetName)</span>
+                        </div>
+                        <div class="duration-info">
+                            <span class="label">Duration:</span>
+                            <span class="value tw-mono">@(item.TrainingDurationSec?.ToString("0.0") ?? "0.0")s</span>
+                        </div>
+                    </div>
+
+                    <div class="metrics-card-footer">
+                        <button class="tw-btn-ghost full-width">View Detailed Metrics →</button>
+                    </div>
                 </div>
-                <a class="button ghost" href="@($"/results/{item.ExperimentId}")">View metrics</a>
-            </div>
-        }
-    </div>
-}
+            }
+        </div>
+    }
+</div>
 
 @code {
     private TrainWise.Web.Models.TrainingHistoryResponse? _history;
@@ -63,40 +80,104 @@ else
 }
 
 <style>
-    .page-header {
-        margin-bottom: var(--space-6);
+    .metrics-hub-page {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+        padding-bottom: 60px;
     }
 
-    .metrics-list {
+    .metrics-grid {
         display: grid;
-        gap: var(--space-4);
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 24px;
     }
 
-    .metrics-item {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-4);
+    .metrics-card {
+        padding: 32px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        border: 1px solid var(--border-subtle);
+    }
+
+    .metrics-card:hover {
+        border-color: var(--accent-violet);
+        transform: translateY(-4px);
+        background: rgba(129, 140, 248, 0.03);
+    }
+
+    .metrics-card-header {
         display: flex;
         justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .model-info h3 {
+        font-size: 1.25rem;
+        margin-bottom: 8px;
+        color: var(--text-h1);
+    }
+
+    .model-date {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .metrics-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 12px;
+    }
+
+    .dataset-info, .duration-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+    }
+
+    .label {
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .value {
+        color: var(--text-h1);
+        font-weight: 600;
+    }
+
+    .metrics-card-footer {
+        margin-top: auto;
+    }
+
+    .full-width {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px;
+        display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: var(--space-4);
+        gap: 16px;
     }
 
-    .metrics-item h4 {
-        margin: 0 0 var(--space-1);
-        font-size: 1rem;
+    .empty-icon {
+        font-size: 3rem;
+        opacity: 0.4;
     }
 
-    .meta {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.875rem;
-    }
-
-    @@media (max-width: 720px) {
-        .metrics-item {
-            flex-direction: column;
-            align-items: flex-start;
+    @@media (max-width: 600px) {
+        .metrics-grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>

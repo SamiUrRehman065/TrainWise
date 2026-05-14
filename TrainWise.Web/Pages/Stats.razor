@@ -4,111 +4,132 @@
 @inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
 @inject TrainWise.Web.Services.State.SessionState SessionState
 @inject ILogger<Stats> Logger
+@inject NavigationManager NavManager
 @using TrainWise.Web.Components.Common
 
+<div class="dashboard-page animate-fade-up">
+    <section class="tw-section-header">
+        <h1 class="text-gradient">Workspace Dashboard</h1>
+        <p class="subtitle">Real-time overview of your ML assets, training performance, and storage utilization.</p>
+    </section>
 
-<section class="page-header">
-    <div>
-        <h1>Dashboard</h1>
-        <p class="page-desc">Overview of your ML workspace and storage.</p>
-    </div>
-</section>
-
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="state-card">
-        <div class="state-text">Please <a href="/login">sign in</a> to view your dashboard.</div>
-    </div>
-}
-else
-{
-    @if (_isLoading)
+    @if (!SessionState.IsAuthenticated)
     {
-        <div class="state-card">
+        <div class="tw-card animate-fade-up">
+            <p>Please <a href="/login">sign in</a> to view your personal dashboard.</p>
+        </div>
+    }
+    else if (_isLoading)
+    {
+        <div class="tw-card animate-fade-up" style="text-align: center; padding: 80px;">
             <div class="loading-spinner"></div>
-            <div class="state-text">Loading dashboard...</div>
+            <p class="stat-label" style="margin-top: 16px;">Synchronizing Workspace...</p>
         </div>
     }
     else if (_stats is not null)
     {
+        <!-- TOP METRICS -->
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Total Datasets</div>
-                <div class="stat-value">@_stats.TotalDatasets</div>
+            <div class="tw-stat-card animate-fade-up" style="animation-delay: 0.1s;">
+                <span class="stat-label">Total Datasets</span>
+                <span class="stat-number">@_stats.TotalDatasets</span>
+                <div class="stat-trend success">Active: @_stats.ActiveDatasets</div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Active Datasets</div>
-                <div class="stat-value">@_stats.ActiveDatasets</div>
+            <div class="tw-stat-card animate-fade-up" style="animation-delay: 0.2s;">
+                <span class="stat-label">Experiments Run</span>
+                <span class="stat-number">@_stats.TotalExperiments</span>
+                <div class="stat-trend info">History Tracked</div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Total Experiments</div>
-                <div class="stat-value">@_stats.TotalExperiments</div>
+            <div class="tw-stat-card animate-fade-up" style="animation-delay: 0.3s;">
+                <span class="stat-label">Storage Mode</span>
+                <span class="stat-number" style="font-size: 1.5rem;">@_stats.StorageMode</span>
+                <div class="stat-trend warning">Local Disk</div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-label">Storage Mode</div>
-                <div class="stat-value">@_stats.StorageMode</div>
+            <div class="tw-stat-card animate-fade-up" style="animation-delay: 0.4s;">
+                <span class="stat-label">Space Used</span>
+                <span class="stat-number">@( (_stats.EstimatedSize / (1024.0 * 1024)).ToString("0.0") ) MB</span>
+                <div class="stat-trend">Approx. Size</div>
             </div>
         </div>
 
-        <section class="actions-grid">
-            <div class="action-card">
-                <h3>Dataset Management</h3>
-                <p class="action-desc">Manage your datasets, archives, and storage.</p>
-                <div class="action-buttons">
-                    <a href="/datasets" class="button primary">View Datasets</a>
-                    <button class="button ghost" @onclick="ArchiveDatasetsAsync">Archive Old</button>
+        <div class="dashboard-main-grid">
+            <!-- QUICK ACTIONS -->
+            <div class="actions-column">
+                <div class="tw-card action-section animate-fade-up" style="animation-delay: 0.5s;">
+                    <h3>⚡ Quick Actions</h3>
+                    <div class="action-buttons-vertical">
+                        <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/training")'>
+                            <span>🚀 Train New Model</span>
+                        </button>
+                        <button class="tw-btn-ghost" @onclick='() => NavManager.NavigateTo("/upload")'>
+                            <span>📁 Upload Dataset</span>
+                        </button>
+                        <button class="tw-btn-ghost" @onclick="ArchiveDatasetsAsync">
+                            <span>🧹 Archive Old Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tw-card nav-section animate-fade-up" style="animation-delay: 0.6s;">
+                    <h3>🔗 Quick Navigation</h3>
+                    <div class="nav-links-grid">
+                        <a href="/datasets" class="nav-item">Datasets</a>
+                        <a href="/experiments" class="nav-item">History</a>
+                        <a href="/profile" class="nav-item">Profile</a>
+                        <a href="/settings" class="nav-item">Settings</a>
+                    </div>
                 </div>
             </div>
 
-            <div class="action-card">
-                <h3>Training</h3>
-                <p class="action-desc">Train new models and review history.</p>
-                <div class="action-buttons">
-                    <a href="/training" class="button primary">Train Model</a>
-                    <a href="/experiments" class="button ghost">View History</a>
-                </div>
-            </div>
+            <!-- RECENT RUNS -->
+            <div class="history-column">
+                <div class="tw-card recent-runs animate-fade-up" style="animation-delay: 0.7s;">
+                    <div class="section-header-inline">
+                        <h3>📈 Recent Training History</h3>
+                        <a href="/experiments" class="text-link">View All →</a>
+                    </div>
 
-            <div class="action-card">
-                <h3>Account</h3>
-                <p class="action-desc">Manage your profile and settings.</p>
-                <div class="action-buttons">
-                    <a href="/profile" class="button primary">Profile</a>
-                    <a href="/settings" class="button ghost">Settings</a>
-                </div>
-            </div>
-        </section>
-
-        @if (_trainingHistory?.Any() == true)
-        {
-            <section class="recent-section">
-                <h2>Recent Training Runs</h2>
-                <div class="recent-list">
-                    @foreach (var run in _trainingHistory.Take(5))
+                    @if (_trainingHistory?.Any() == true)
                     {
-                        <div class="recent-item">
-                            <div class="recent-details">
-                                <div class="recent-name">@run.ModelName</div>
-                                <div class="recent-meta">@run.TaskType &middot; @run.CreatedAt.ToString("MMM dd")</div>
-                            </div>
-                            <div class="recent-duration">@(run.TrainingDurationSec?.ToString("0.0") ?? "N/A")s</div>
+                        <div class="run-list">
+                            @foreach (var run in _trainingHistory.Take(5))
+                            {
+                                <div class="run-item" @onclick='() => NavManager.NavigateTo($"/experiments/{run.ExperimentId}")'>
+                                    <div class="run-icon">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                    </div>
+                                    <div class="run-details">
+                                        <div class="run-name">@run.ModelName</div>
+                                        <div class="run-meta">
+                                            <span class="tw-badge info">@run.TaskType</span>
+                                            <span>&bull; @run.CreatedAt.ToString("MMM dd, HH:mm")</span>
+                                        </div>
+                                    </div>
+                                    <div class="run-duration tw-mono">
+                                        @(run.TrainingDurationSec?.ToString("0.0") ?? "N/A")s
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-list">
+                            <p>No training history yet. Start your first session!</p>
                         </div>
                     }
                 </div>
-            </section>
-        }
+            </div>
+        </div>
 
         @if (!string.IsNullOrEmpty(_message))
         {
-            <div class="alert alert-@(_messageType)">
+            <div class="tw-badge @(_messageType == "success" ? "success" : "danger") full-width animate-fade-up">
                 @_message
             </div>
         }
     }
-}
+</div>
 
 @code {
     private DashboardStats? _stats;
@@ -116,10 +137,6 @@ else
     private bool _isLoading = true;
     private string? _message;
     private string _messageType = "success";
-    private List<BreadcrumbItem> _breadcrumbs = new()
-    {
-        new BreadcrumbItem { Label = "Dashboard" }
-    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -131,7 +148,6 @@ else
         try
         {
             _stats = await DatasetApi.GetStatsAsync();
-
             var historyResponse = await ExperimentApi.GetTrainingHistoryAsync();
             _trainingHistory = historyResponse?.TrainingHistory;
         }
@@ -150,215 +166,188 @@ else
         try
         {
             var success = await DatasetApi.ArchiveAsync(30);
-
             if (success)
             {
-                _message = "Datasets archived successfully!";
+                _message = "Older datasets archived successfully.";
                 _messageType = "success";
                 await LoadDashboardData();
             }
             else
             {
-                _message = "Failed to archive datasets.";
-                _messageType = "error";
+                _message = "No datasets qualified for archival.";
+                _messageType = "info";
             }
         }
         catch (Exception ex)
         {
-            _message = $"Error: {ex.Message}";
+            _message = $"Archival failed: {ex.Message}";
             _messageType = "error";
-            Logger.LogError(ex, "Archive error");
         }
     }
 }
 
 <style>
-    .page-header {
-        margin-bottom: var(--space-7);
-    }
-
-    .page-header h1 {
-        font-size: 32px;
-        font-weight: 700;
-        margin: 0 0 var(--space-2);
-    }
-
-    .page-desc {
-        color: var(--mut);
-        font-size: 15px;
-        margin: 0;
+    .dashboard-page {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
     }
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: var(--space-4);
-        margin-bottom: var(--space-7);
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
     }
 
-    .stat-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        padding: var(--space-5);
-    }
-
-    .stat-label {
-        font-size: 11px;
-        color: var(--mut);
+    .stat-trend {
+        font-size: 0.75rem;
+        margin-top: 8px;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        font-weight: 700;
-        font-family: var(--sans);
+        opacity: 0.8;
     }
 
-    .stat-value {
-        font-size: 28px;
-        font-weight: 400;
-        margin-top: var(--space-1);
-        font-family: var(--mono);
-        color: var(--txt);
-    }
+    .stat-trend.success { color: var(--accent-green); }
+    .stat-trend.info { color: var(--accent-cyan); }
+    .stat-trend.warning { color: var(--accent-red); }
 
-    .actions-grid {
+    .dashboard-main-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: var(--space-5);
-        margin-bottom: var(--space-7);
+        grid-template-columns: 320px 1fr;
+        gap: 32px;
     }
 
-    .action-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        padding: var(--space-6);
-    }
-
-    .action-card h3 {
-        margin: 0 0 var(--space-2);
-        font-size: 18px;
-    }
-
-    .action-desc {
-        font-size: 13px;
-        color: var(--mut);
-        margin-bottom: var(--space-4);
-    }
-
-    .action-buttons {
+    .actions-column {
         display: flex;
-        gap: var(--space-3);
+        flex-direction: column;
+        gap: 24px;
     }
 
-    .action-buttons .button {
-        flex: 1;
-        text-align: center;
-        padding: 10px 12px;
-        font-size: 13px;
+    .action-section h3, .nav-section h3, .recent-runs h3 {
+        font-size: 1.1rem;
+        margin-bottom: 24px;
+        color: var(--text-h1);
     }
 
-    .recent-section {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        padding: var(--space-6);
-        margin-bottom: var(--space-6);
+    .action-buttons-vertical {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
 
-    .recent-section h2 {
-        margin: 0 0 var(--space-5);
-        font-size: 20px;
+    .action-buttons-vertical button {
+        width: 100%;
+        justify-content: flex-start;
+        padding-left: 20px;
     }
 
-    .recent-list {
+    .nav-links-grid {
         display: grid;
-        gap: 0;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
     }
 
-    .recent-item {
+    .nav-item {
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        text-align: center;
+        text-decoration: none;
+        color: var(--text-body);
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .nav-item:hover {
+        background: rgba(129, 140, 248, 0.1);
+        border-color: var(--accent-violet);
+        color: var(--text-h1);
+        transform: translateY(-2px);
+    }
+
+    .recent-runs {
+        padding: 40px;
+    }
+
+    .section-header-inline {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .text-link {
+        font-size: 0.85rem;
+        color: var(--accent-violet);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .run-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .run-item {
         display: flex;
         align-items: center;
-        gap: var(--space-4);
-        padding: var(--space-3) 0;
-        border-bottom: 1px solid var(--color-border);
+        gap: 20px;
+        padding: 16px 20px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-subtle);
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .recent-item:last-child {
-        border-bottom: none;
+    .run-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: var(--border-active);
+        transform: translateX(4px);
     }
 
-    .recent-details {
+    .run-icon {
+        color: var(--accent-violet);
+        opacity: 0.8;
+    }
+
+    .run-details {
         flex: 1;
     }
 
-    .recent-name {
-        font-size: 14px;
-        font-weight: 600;
+    .run-name {
+        font-weight: 700;
+        color: var(--text-h1);
+        font-size: 1rem;
+        margin-bottom: 4px;
     }
 
-    .recent-meta {
-        font-size: 12px;
-        color: var(--mut);
-        margin-top: 2px;
+    .run-meta {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .recent-duration {
-        font-size: 13px;
-        font-weight: 600;
-        font-family: var(--font-mono);
-        color: var(--color-accent);
+    .run-duration {
+        font-size: 0.9rem;
+        color: var(--accent-cyan);
+        font-weight: 700;
     }
 
-    .state-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        padding: var(--space-8) var(--space-6);
-        text-align: center;
+    .full-width { width: 100%; justify-content: center; margin-top: 16px; }
+
+    @@media (max-width: 1100px) {
+        .dashboard-main-grid { grid-template-columns: 1fr; }
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    .state-card .state-text {
-        color: var(--color-text-secondary);
-    }
-
-    .state-card a {
-        color: var(--color-accent);
-        text-decoration: underline;
-    }
-
-    .loading-spinner {
-        width: 32px;
-        height: 32px;
-        border: 2px solid var(--color-border);
-        border-top-color: var(--color-accent);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-        margin: 0 auto var(--space-4);
-    }
-
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    .alert {
-        padding: var(--space-4);
-        border: 1px solid var(--color-border);
-        margin-top: var(--space-5);
-    }
-
-    .alert-success {
-        border-color: var(--color-positive);
-        color: var(--color-positive);
-    }
-
-    .alert-error {
-        border-color: var(--color-negative);
-        color: var(--color-negative);
-    }
-
-    @@media (max-width: 768px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .actions-grid {
-            grid-template-columns: 1fr;
-        }
+    @@media (max-width: 600px) {
+        .stats-grid { grid-template-columns: 1fr; }
     }
 </style>

@@ -1,34 +1,77 @@
 @page "/datasets/{Id}/eda"
 @inject TrainWise.Web.Services.Api.DatasetApi DatasetApi
 @inject IJSRuntime JS
+@using TrainWise.Web.Components.Common
 
-<h1>Dataset EDA Dashboard</h1>
+<div class="eda-page">
+    <section class="tw-section-header animate-fade-up">
+        <h1 class="text-gradient">Exploratory Data Analysis</h1>
+        <p class="subtitle">Deep dive into feature distributions, correlations, and data quality metrics.</p>
+    </section>
 
-@if (_loading)
-{
-    <p class="muted">Loading EDA...</p>
-}
-else if (_eda is null || _summary is null)
-{
-    <div class="alert alert-warning">EDA not available for this dataset.</div>
-}
-else
-{
-    <div class="grid grid-2">
-        <div class="card"><h3>Duplicate Rows</h3><p class="lead">@_eda.DuplicateRows (@_eda.DuplicatePercentage.ToString("0.##")%)</p></div>
-        <div class="card"><h3>Memory Usage</h3><p class="lead">@_eda.MemoryUsageMb.ToString("0.00") MB</p></div>
-    </div>
+    @if (_loading)
+    {
+        <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
+            <div class="loading-spinner"></div>
+            <p class="stat-label" style="margin-top: 16px;">Scanning Dataset Structure...</p>
+        </div>
+    }
+    else if (_eda is null || _summary is null)
+    {
+        <div class="tw-card empty-state animate-fade-up">
+            <div class="empty-icon">📉</div>
+            <h3>Analysis Unavailable</h3>
+            <p class="subtitle">The EDA report could not be generated for this dataset.</p>
+        </div>
+    }
+    else
+    {
+        <div class="eda-summary-grid animate-fade-up">
+            <div class="tw-stat-card">
+                <span class="stat-label">Duplicate Rows</span>
+                <span class="stat-number">@_eda.DuplicateRows</span>
+                <span class="stat-label">(@_eda.DuplicatePercentage.ToString("0.##")%)</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">Memory Footprint</span>
+                <span class="stat-number">@_eda.MemoryUsageMb.ToString("0.00")</span>
+                <span class="stat-label">Megabytes</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">Missing Values</span>
+                <span class="stat-number">@(_summary.MissingValues.Values.Sum(v => v.Count))</span>
+                <span class="stat-label">Cells Affected</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">Outlier Density</span>
+                <span class="stat-number">@(_eda.OutliersByColumn.Values.Average(v => v.Percentage).ToString("0.##"))%</span>
+                <span class="stat-label">Dataset Average</span>
+            </div>
+        </div>
 
-    <div class="grid grid-2" style="margin-top:16px;">
-        <div class="card"><h3>Correlation Heatmap</h3><div id="eda-corr" style="height:360px;"></div></div>
-        <div class="card"><h3>Class Distribution</h3><div id="eda-class" style="height:360px;"></div></div>
-    </div>
+        <div class="chart-grid animate-fade-up">
+            <div class="tw-card chart-container">
+                <h3>📊 Feature Correlation Matrix</h3>
+                <div id="eda-corr" class="plotly-chart"></div>
+            </div>
+            <div class="tw-card chart-container">
+                <h3>📈 Class Distribution</h3>
+                <div id="eda-class" class="plotly-chart"></div>
+            </div>
+        </div>
 
-    <div class="grid grid-2" style="margin-top:16px;">
-        <div class="card"><h3>Missing Values (%)</h3><div id="eda-missing" style="height:380px;"></div></div>
-        <div class="card"><h3>Outliers by Column (%)</h3><div id="eda-outliers" style="height:380px;"></div></div>
-    </div>
-}
+        <div class="chart-grid secondary-charts animate-fade-up">
+            <div class="tw-card chart-container">
+                <h3>🔍 Missing Values by Column (%)</h3>
+                <div id="eda-missing" class="plotly-chart"></div>
+            </div>
+            <div class="tw-card chart-container">
+                <h3>🛡️ Outliers detected per Feature (%)</h3>
+                <div id="eda-outliers" class="plotly-chart"></div>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
     [Parameter] public string? Id { get; set; }
@@ -50,22 +93,71 @@ else
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_chartsRendered || _eda is null || _summary is null) return;
+        
+        try {
+            await JS.InvokeVoidAsync("PlotlyInterop.renderCorrelationHeatmap", "eda-corr", _summary.CorrelationMatrix, _summary.Columns);
 
-        await JS.InvokeVoidAsync("PlotlyInterop.renderCorrelationHeatmap", "eda-corr", _summary.CorrelationMatrix, _summary.Columns);
+            var classDist = _eda.TargetDistribution ?? _summary.ClassDistribution;
+            if (classDist is not null && classDist.Count > 0)
+            {
+                await JS.InvokeVoidAsync("PlotlyInterop.renderClassDistribution", "eda-class", classDist.Keys.ToList(), classDist.Values.ToList());
+            }
 
-        var classDist = _eda.TargetDistribution ?? _summary.ClassDistribution;
-        if (classDist is not null && classDist.Count > 0)
-        {
-            await JS.InvokeVoidAsync("PlotlyInterop.renderClassDistribution", "eda-class", classDist.Keys.ToList(), classDist.Values.ToList());
+            var missingLabels = _summary.MissingValues.Keys.ToList();
+            var missingVals = _summary.MissingValues.Values.Select(v => v.Percentage).ToList();
+            await JS.InvokeVoidAsync("PlotlyInterop.renderSimpleBar", "eda-missing", missingLabels, missingVals, "Missing Value %");
+
+            var outlierLabels = _eda.OutliersByColumn.Keys.ToList();
+            var outlierVals = _eda.OutliersByColumn.Values.Select(v => v.Percentage).ToList();
+            await JS.InvokeVoidAsync("PlotlyInterop.renderHorizontalBar", "eda-outliers", outlierLabels, outlierVals, "Outlier %");
+            _chartsRendered = true;
+        } catch (Exception ex) {
+            Console.WriteLine("Chart render error: " + ex.Message);
         }
-
-        var missingLabels = _summary.MissingValues.Keys.ToList();
-        var missingVals = _summary.MissingValues.Values.Select(v => v.Percentage).ToList();
-        await JS.InvokeVoidAsync("PlotlyInterop.renderSimpleBar", "eda-missing", missingLabels, missingVals, "Missing Value Percentage");
-
-        var outlierLabels = _eda.OutliersByColumn.Keys.ToList();
-        var outlierVals = _eda.OutliersByColumn.Values.Select(v => v.Percentage).ToList();
-        await JS.InvokeVoidAsync("PlotlyInterop.renderHorizontalBar", "eda-outliers", outlierLabels, outlierVals, "Outlier Percentage");
-        _chartsRendered = true;
     }
 }
+
+<style>
+    .eda-page {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .eda-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+    }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 24px;
+    }
+
+    .secondary-charts {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .chart-container h3 {
+        font-size: 1.1rem;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--text-h1);
+    }
+
+    .plotly-chart {
+        height: 400px;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.01);
+        border-radius: 12px;
+    }
+
+    @@media (max-width: 1200px) {
+        .eda-summary-grid { grid-template-columns: repeat(2, 1fr); }
+        .chart-grid { grid-template-columns: 1fr; }
+    }
+</style>

@@ -5,215 +5,156 @@
 @inject NavigationManager NavManager
 @using TrainWise.Web.Components.Common
 
-
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="alert alert-warning">
-        <p>Please <a href="/login">sign in</a> to view recommendations.</p>
-    </div>
-}
-else if (_isLoading)
-{
-    <div class="state-card">
-        <div class="loading-spinner"></div>
-        <p class="state-text">Analyzing experiment data…</p>
-    </div>
-}
-else if (_experiment is null)
-{
-    <div class="state-card empty">
-        <h3>Experiment not found</h3>
-        <p class="state-text">The experiment you're looking for doesn't exist.</p>
-        <a href="/experiments" class="button primary">Back to history</a>
-    </div>
-}
-else
-{
-    <div class="page-header">
-        <div>
-            <h1>Recommendations</h1>
-            <p class="page-desc">Actionable insights for @_experiment.ModelName.</p>
-        </div>
-        <div class="page-actions">
-            <a href="@($"/results/{ExperimentId}")" class="button ghost">View metrics</a>
-            <a href="@($"/experiments/{ExperimentId}")" class="button ghost">View details</a>
-        </div>
-    </div>
-
-    @if (_recommendations.Count == 0)
+<div class="recommendations-page">
+    @if (!SessionState.IsAuthenticated)
     {
-        <div class="state-card empty">
-            <h3>All clear</h3>
-            <p class="state-text">No issues detected. The model is performing well with the current configuration.</p>
+        <div class="tw-card animate-fade-up">
+            <p>Please <a href="/login">sign in</a> to view insights.</p>
+        </div>
+    }
+    else if (_isLoading)
+    {
+        <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
+            <div class="loading-spinner"></div>
+            <p class="stat-label" style="margin-top: 16px;">Running Diagnostic Engine...</p>
+        </div>
+    }
+    else if (_experiment is null)
+    {
+        <div class="tw-card empty-state animate-fade-up">
+            <div class="empty-icon">🔍</div>
+            <h3>Experiment Not Found</h3>
+            <p class="subtitle">The model run you're analyzing could not be loaded.</p>
+            <button class="tw-btn-primary" style="margin-top: 24px;" @onclick='() => NavManager.NavigateTo("/experiments")'>Back to History</button>
         </div>
     }
     else
     {
-        @if (_experiment?.Result?.ClassificationMetrics != null)
+        <section class="tw-section-header animate-fade-up">
+            <h1 class="text-gradient">Model Insights</h1>
+            <p class="subtitle">AI-driven recommendations and performance diagnostics for <strong>@_experiment.ModelName</strong>.</p>
+            <div class="header-actions">
+                <button class="tw-btn-ghost" @onclick='() => NavManager.NavigateTo($"/experiments/{ExperimentId}")'>📜 View Details</button>
+                <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/training")'>🔄 Retrain Model</button>
+            </div>
+        </section>
+
+        <!-- DIAGNOSTIC VISUALS -->
+        @if (_experiment?.Result?.ClassificationMetrics != null || _experiment?.Result?.RegressionMetrics != null)
         {
-            var classMetrics = _experiment.Result.ClassificationMetrics;
-            var trainAcc = classMetrics.TrainAccuracy ?? 0;
-            var testAcc = classMetrics.Accuracy;
-            var trainF1 = classMetrics.TrainF1Score ?? 0;
-            var testF1 = classMetrics.F1Score;
-
-            <div class="metrics-visuals">
-                <h3>Performance Tradeoffs & Visuals</h3>
-                <div class="visuals-grid">
-                    <div class="visual-card">
-                        <h4>Bias vs Variance (Accuracy)</h4>
-                        <p class="visual-desc">Comparing Training vs Testing accuracy to detect Overfitting or Underfitting.</p>
-                        <div class="bar-chart">
-                            <div class="bar-row">
-                                <span class="bar-label">Train Acc.</span>
-                                <div class="bar-track"><div class="bar-fill model1" style="width: @((trainAcc * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@trainAcc.ToString("P1")</span>
-                            </div>
-                            <div class="bar-row">
-                                <span class="bar-label">Test Acc.</span>
-                                <div class="bar-track"><div class="bar-fill model2" style="width: @((testAcc * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@testAcc.ToString("P1")</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="visual-card">
-                        <h4>Precision vs Recall Tradeoff</h4>
-                        <p class="visual-desc">Balancing false positives (Precision) against false negatives (Recall).</p>
-                        <div class="bar-chart">
-                            <div class="bar-row">
-                                <span class="bar-label">Precision</span>
-                                <div class="bar-track"><div class="bar-fill" style="background-color: var(--color-accent); width: @((classMetrics.Precision * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@classMetrics.Precision.ToString("P1")</span>
-                            </div>
-                            <div class="bar-row">
-                                <span class="bar-label">Recall</span>
-                                <div class="bar-track"><div class="bar-fill" style="background-color: #D4A017; width: @((classMetrics.Recall * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@classMetrics.Recall.ToString("P1")</span>
-                            </div>
-                            <div class="bar-row">
-                                <span class="bar-label">F1-Score</span>
-                                <div class="bar-track"><div class="bar-fill" style="background-color: var(--color-positive); width: @((testF1 * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@testF1.ToString("P1")</span>
-                            </div>
-                        </div>
+            <div class="diagnostics-grid animate-fade-up">
+                <div class="tw-card diagnostic-card">
+                    <h3>🎯 Bias vs Variance (Overfitting)</h3>
+                    <div class="diagnostic-viz">
+                        @{
+                            var result = _experiment.Result;
+                            if (result?.ClassificationMetrics != null)
+                            {
+                                var classMetrics = result.ClassificationMetrics;
+                                @RenderDiagnosticBar("Train Accuracy", classMetrics.TrainAccuracy ?? 0, "var(--accent-violet)")
+                                @RenderDiagnosticBar("Test Accuracy", classMetrics.Accuracy, "var(--accent-cyan)")
+                            }
+                            else if (result?.RegressionMetrics != null)
+                            {
+                                var regMetrics = result.RegressionMetrics;
+                                @RenderDiagnosticBar("Train R²", Math.Max(0, regMetrics.TrainR2 ?? 0), "var(--accent-violet)")
+                                @RenderDiagnosticBar("Test R²", Math.Max(0, regMetrics.R2Score), "var(--accent-cyan)")
+                            }
+                        }
                     </div>
                 </div>
-            </div>
-        }
-        else if (_experiment?.Result?.RegressionMetrics != null)
-        {
-            var regMetrics = _experiment.Result.RegressionMetrics;
-            var trainR2 = regMetrics.TrainR2 ?? 0;
-            var testR2 = regMetrics.R2Score;
-            var trainRmse = regMetrics.TrainRmse ?? 0;
-            var testRmse = regMetrics.Rmse;
-            
-            var maxRmse = Math.Max(trainRmse, testRmse) * 1.2;
-            if (maxRmse == 0) maxRmse = 1;
 
-            <div class="metrics-visuals">
-                <h3>Regression Diagnostics</h3>
-                <div class="visuals-grid">
-                    <div class="visual-card">
-                        <h4>Bias vs Variance (R²)</h4>
-                        <p class="visual-desc">Comparing Training vs Testing R² to detect Overfitting or Underfitting.</p>
-                        <div class="bar-chart">
-                            <div class="bar-row">
-                                <span class="bar-label">Train R²</span>
-                                <div class="bar-track"><div class="bar-fill model1" style="width: @((Math.Max(0, trainR2) * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@trainR2.ToString("0.000")</span>
-                            </div>
-                            <div class="bar-row">
-                                <span class="bar-label">Test R²</span>
-                                <div class="bar-track"><div class="bar-fill model2" style="width: @((Math.Max(0, testR2) * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@testR2.ToString("0.000")</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="visual-card">
-                        <h4>Error Distribution (RMSE vs MAE)</h4>
-                        <p class="visual-desc">RMSE penalizes large errors more heavily than MAE.</p>
-                        <div class="bar-chart">
-                            <div class="bar-row">
-                                <span class="bar-label">RMSE</span>
-                                <div class="bar-track"><div class="bar-fill" style="background-color: var(--color-negative); width: @((regMetrics.Rmse / maxRmse * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@regMetrics.Rmse.ToString("0.000")</span>
-                            </div>
-                            <div class="bar-row">
-                                <span class="bar-label">MAE</span>
-                                <div class="bar-track"><div class="bar-fill" style="background-color: #D4A017; width: @((regMetrics.Mae / maxRmse * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
-                                <span class="bar-value">@regMetrics.Mae.ToString("0.000")</span>
-                            </div>
-                        </div>
+                <div class="tw-card diagnostic-card">
+                    <h3>⚖️ Balance & Stability</h3>
+                    <div class="diagnostic-viz">
+                        @{
+                            var res2 = _experiment.Result;
+                            if (res2?.ClassificationMetrics != null)
+                            {
+                                var classMetrics = res2.ClassificationMetrics;
+                                @RenderDiagnosticBar("Precision", classMetrics.Precision, "var(--accent-green)")
+                                @RenderDiagnosticBar("Recall", classMetrics.Recall, "#facc15")
+                            }
+                            else if (res2?.RegressionMetrics != null)
+                            {
+                                var regMetrics = res2.RegressionMetrics;
+                                @RenderDiagnosticBar("RMSE Error", Math.Min(1, regMetrics.Rmse / 100), "var(--accent-red)")
+                                @RenderDiagnosticBar("MAE Error", Math.Min(1, regMetrics.Mae / 100), "#facc15")
+                            }
+                        }
                     </div>
                 </div>
             </div>
         }
 
-        <div class="rec-list">
-            @foreach (var rec in _recommendations)
+        <!-- RECOMMENDATIONS LIST -->
+        <div class="recommendations-section animate-fade-up">
+            <h3>🚨 Suggested Actions</h3>
+            @if (_recommendations.Count == 0)
             {
-                <div class="rec-card @GetSeverityClass(rec.Severity)">
-                    <div class="rec-header">
-                        <span class="rec-severity @GetSeverityClass(rec.Severity)">@GetSeverityLabel(rec.Severity)</span>
-                    </div>
-                    <p class="rec-message">@rec.Message</p>
-                    @if (!string.IsNullOrEmpty(rec.Action))
+                <div class="tw-card success-card">
+                    <span class="success-icon">✅</span>
+                    <p>No optimization issues detected. Your model configuration appears optimal for this dataset.</p>
+                </div>
+            }
+            else
+            {
+                <div class="rec-list">
+                    @foreach (var rec in _recommendations)
                     {
-                        <div class="rec-action">
-                            <span class="rec-action-label">Action:</span>
-                            <span>@rec.Action</span>
+                        <div class="tw-card rec-card @GetSeverityClass(rec.Severity)">
+                            <div class="rec-header">
+                                <span class="tw-badge @GetBadgeClass(rec.Severity)">@GetSeverityLabel(rec.Severity)</span>
+                            </div>
+                            <p class="rec-message">@rec.Message</p>
+                            @if (!string.IsNullOrEmpty(rec.Action))
+                            {
+                                <div class="action-box">
+                                    <span class="action-label">Recommendation:</span>
+                                    <span class="action-text">@rec.Action</span>
+                                </div>
+                            }
                         </div>
                     }
                 </div>
             }
         </div>
-    }
 
-    @if (_datasetSummary is not null)
-    {
-        <div class="quality-section">
-            <h3>Data quality overview</h3>
-            <div class="quality-grid">
-                <div class="quality-card">
-                    <span class="quality-label">Rows</span>
-                    <span class="quality-value">@_datasetSummary.RowCount.ToString("N0")</span>
-                </div>
-                <div class="quality-card">
-                    <span class="quality-label">Columns</span>
-                    <span class="quality-value">@_datasetSummary.ColumnCount</span>
-                </div>
-                @if (_datasetSummary.ImbalanceRatio.HasValue)
-                {
-                    <div class="quality-card @(_datasetSummary.ImbalanceRatio > 2 ? "warn" : "")">
-                        <span class="quality-label">Imbalance ratio</span>
-                        <span class="quality-value">@_datasetSummary.ImbalanceRatio.Value.ToString("0.00")</span>
+        <!-- DATA QUALITY -->
+        @if (_datasetSummary is not null)
+        {
+            <div class="quality-section animate-fade-up">
+                <h3>📊 Underlying Data Quality</h3>
+                <div class="quality-grid">
+                    <div class="tw-stat-card">
+                        <span class="stat-label">Dataset Rows</span>
+                        <span class="stat-number">@_datasetSummary.RowCount.ToString("N0")</span>
                     </div>
-                }
-                <div class="quality-card">
-                    <span class="quality-label">Missing values</span>
-                    <span class="quality-value">@_totalMissing</span>
+                    <div class="tw-stat-card">
+                        <span class="stat-label">Total Features</span>
+                        <span class="stat-number">@_datasetSummary.ColumnCount</span>
+                    </div>
+                    <div class="tw-stat-card @(_datasetSummary.ImbalanceRatio > 2 ? "warning-border" : "")">
+                        <span class="stat-label">Imbalance Ratio</span>
+                        <span class="stat-number">@_datasetSummary.ImbalanceRatio?.ToString("0.00")</span>
+                    </div>
+                    <div class="tw-stat-card">
+                        <span class="stat-label">Missing Data</span>
+                        <span class="stat-number">@_totalMissing</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        }
     }
-}
+</div>
 
 @code {
     [Parameter] public Guid ExperimentId { get; set; }
-
     private ExperimentDetail? _experiment;
     private DatasetSummary? _datasetSummary;
     private List<TrainWise.Web.Models.Recommendation> _recommendations = new();
     private bool _isLoading = true;
     private int _totalMissing;
-    private List<BreadcrumbItem> _breadcrumbs = new()
-    {
-        new BreadcrumbItem { Label = "History", Url = "/experiments" },
-        new BreadcrumbItem { Label = "Recommendations" }
-    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -227,378 +168,153 @@ else
             _experiment = await ExperimentApi.GetAsync(ExperimentId);
             if (_experiment is null) return;
 
-            _breadcrumbs = new()
-            {
-                new BreadcrumbItem { Label = "History", Url = "/experiments" },
-                new BreadcrumbItem { Label = _experiment.ModelName, Url = $"/experiments/{ExperimentId}" },
-                new BreadcrumbItem { Label = "Recommendations" }
-            };
-
             _datasetSummary = await DatasetApi.GetSummaryAsync(_experiment.DatasetId);
             if (_datasetSummary is not null)
-            {
                 _totalMissing = _datasetSummary.MissingValues.Values.Sum(m => m.Count);
-            }
 
             var apiRecs = await ExperimentApi.GetRecommendationsAsync(ExperimentId);
-            if (apiRecs is not null)
-            {
-                _recommendations = apiRecs;
-            }
+            if (apiRecs is not null) _recommendations = apiRecs;
         }
-        catch
-        {
-            // Experiment not found — _experiment stays null
-        }
-        finally
-        {
-            _isLoading = false;
-        }
+        catch { }
+        finally { _isLoading = false; }
     }
 
-    private string GetSeverityClass(string severity) => severity.ToLowerInvariant() switch
-    {
-        "critical" => "critical",
+    private string GetSeverityClass(string severity) => severity.ToLower() == "critical" ? "critical-card" : "";
+    private string GetBadgeClass(string severity) => severity.ToLower() switch {
+        "critical" => "danger",
         "warning" => "warning",
         "success" => "success",
         _ => "info"
     };
-
-    private string GetSeverityLabel(string severity) => severity.ToLowerInvariant() switch
-    {
-        "critical" => "Critical",
-        "warning" => "Warning",
-        "success" => "Excellent",
-        _ => "Suggestion"
+    private string GetSeverityLabel(string severity) => severity.ToLower() switch {
+        "critical" => "Critical Issue",
+        "warning" => "Optimization Needed",
+        "success" => "Optimal",
+        _ => "Observation"
     };
+
+    private RenderFragment RenderDiagnosticBar(string label, double value, string color) => @<div class="diag-bar-row">
+        <div class="diag-label">
+            <span>@label</span>
+            <span class="tw-mono">@value.ToString("P1")</span>
+        </div>
+        <div class="tw-progress-bar">
+            <div class="progress-fill" style="width: @((value * 100).ToString("F1"))%; background: @color;"></div>
+        </div>
+    </div>;
 }
 
 <style>
-    .page-header {
+    .recommendations-page {
         display: flex;
-        align-items: flex-start;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .diagnostics-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    .diagnostic-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 24px;
+        color: var(--text-h1);
+    }
+
+    .diagnostic-viz {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .diag-bar-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .diag-label {
+        display: flex;
         justify-content: space-between;
-        gap: var(--space-5);
-        margin-bottom: var(--space-6);
-        flex-wrap: wrap;
+        font-size: 0.85rem;
+        color: var(--text-body);
     }
 
-    .page-header h1 {
-        font-family: var(--font-ui);
-        font-size: 1.75rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-1);
-        color: var(--color-text);
-    }
-
-    .page-desc {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.9375rem;
-    }
-
-    .page-actions {
-        flex-shrink: 0;
-        display: flex;
-        gap: var(--space-2);
+    .recommendations-section h3, .quality-section h3 {
+        font-size: 1.2rem;
+        margin-bottom: 24px;
+        color: var(--text-h1);
     }
 
     .rec-list {
         display: flex;
         flex-direction: column;
-        gap: var(--space-4);
-        margin-bottom: var(--space-6);
+        gap: 16px;
     }
 
     .rec-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-5);
-        border-left: 3px solid var(--color-border);
+        border-left: 4px solid var(--accent-violet);
+        padding: 24px;
     }
 
-    .rec-card.critical {
-        border-left-color: var(--color-negative);
+    .rec-card.critical-card {
+        border-left-color: var(--accent-red);
+        background: rgba(239, 68, 68, 0.03);
     }
 
-    .rec-card.warning {
-        border-left-color: #D4A017;
-    }
-
-    .rec-card.info {
-        border-left-color: var(--color-text-secondary);
-    }
-
-    .rec-card.success {
-        border-left-color: var(--color-positive);
-    }
-
-    .rec-header {
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-        margin-bottom: var(--space-2);
-    }
-
-    .rec-badge {
-        display: inline-block;
-        padding: var(--space-1) var(--space-3);
-        font-size: 0.75rem;
-        font-weight: 500;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-        border: 1px solid var(--color-border);
-    }
-
-    .rec-badge.critical {
-        border-color: var(--color-negative);
-        color: var(--color-negative);
-    }
-
-    .rec-badge.warning {
-        border-color: #D4A017;
-        color: #D4A017;
-    }
-
-    .rec-badge.info {
-        border-color: var(--color-text-secondary);
-        color: var(--color-text-secondary);
-    }
-
-    .rec-badge.success {
-        border-color: var(--color-positive);
-        color: var(--color-positive);
-    }
-
-    .rec-severity {
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-
-    .rec-severity.critical { color: var(--color-negative); }
-    .rec-severity.warning { color: #D4A017; }
-    .rec-severity.info { color: var(--color-text-secondary); }
-    .rec-severity.success { color: var(--color-positive); }
+    .rec-header { margin-bottom: 12px; }
 
     .rec-message {
-        font-size: 0.9375rem;
-        line-height: 1.5;
-        margin: 0 0 var(--space-3);
-        color: var(--color-text);
-    }
-
-    .rec-action {
-        display: flex;
-        gap: var(--space-2);
-        align-items: flex-start;
-        font-size: 0.875rem;
-        color: var(--color-text-secondary);
-        padding: var(--space-3) var(--space-4);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg);
-    }
-
-    .rec-action-label {
-        font-weight: 500;
-        white-space: nowrap;
-        color: var(--color-text);
-    }
-
-    .quality-section {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-5);
-    }
-
-    .quality-section h3 {
-        font-family: var(--font-ui);
         font-size: 1rem;
+        color: var(--text-h1);
         font-weight: 500;
-        margin: 0 0 var(--space-4);
-        color: var(--color-text);
+        margin-bottom: 16px;
+        line-height: 1.6;
     }
+
+    .action-box {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .action-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .action-text { font-size: 0.9rem; color: var(--text-body); }
+
+    .success-card {
+        text-align: center;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .success-icon { font-size: 3rem; }
 
     .quality-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: var(--space-4);
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
     }
 
-    .quality-card {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-1);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg);
-        padding: var(--space-4);
-    }
+    .warning-border { border-color: #facc15 !important; }
 
-    .quality-card.warn {
-        border-color: #D4A017;
-    }
-
-    .quality-label {
-        font-size: 0.75rem;
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 500;
-    }
-
-    .quality-value {
-        font-size: 1.25rem;
-        font-weight: 500;
-        color: var(--color-text);
-        font-family: var(--font-mono);
-    }
-
-    .quality-card.warn .quality-value {
-        color: #D4A017;
-    }
-
-    .alert {
-        padding: var(--space-3) var(--space-4);
-        font-size: 0.875rem;
-        border: 1px solid var(--color-border);
-    }
-
-    .alert p {
-        margin: 0;
-    }
-
-    .alert a {
-        color: var(--color-accent);
-        text-decoration: underline;
-    }
-
-    .alert-warning {
-        background: var(--color-bg);
-        color: var(--color-text);
-    }
-
-    .state-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-7) var(--space-5);
-        text-align: center;
-    }
-
-    .state-card.empty h3 {
-        font-family: var(--font-ui);
-        font-size: 1.125rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-2);
-        color: var(--color-text);
-    }
-
-    .state-text {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.875rem;
-    }
-
-    .state-card .button {
-        margin-top: var(--space-4);
-    }
-
-    .metrics-visuals {
-        margin-bottom: var(--space-6);
-    }
-
-    .metrics-visuals h3 {
-        font-family: var(--font-ui);
-        font-size: 1.25rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-4);
-        color: var(--color-text);
-    }
-
-    .visuals-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: var(--space-4);
-    }
-
-    .visual-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-5);
-    }
-
-    .visual-card h4 {
-        font-family: var(--font-ui);
-        font-size: 1rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-2);
-        color: var(--color-text);
-    }
-
-    .visual-desc {
-        font-size: 0.8125rem;
-        color: var(--color-text-secondary);
-        margin: 0 0 var(--space-4);
-        line-height: 1.4;
-    }
-
-    .bar-chart {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-3);
-    }
-
-    .bar-row {
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-    }
-
-    .bar-label {
-        width: 70px;
-        font-size: 0.8125rem;
-        color: var(--color-text-secondary);
-        flex-shrink: 0;
-    }
-
-    .bar-track {
-        flex-grow: 1;
-        height: 6px;
-        background: var(--color-bg);
-        border-radius: 3px;
-        overflow: hidden;
-    }
-
-    .bar-fill {
-        height: 100%;
-        border-radius: 3px;
-        transition: width 0.5s ease-out;
-    }
-
-    .bar-fill.model1 {
-        background-color: var(--color-accent);
-    }
-
-    .bar-fill.model2 {
-        background-color: var(--color-positive);
-    }
-
-    .bar-value {
-        width: 45px;
-        font-size: 0.8125rem;
-        font-weight: 500;
-        color: var(--color-text);
-        text-align: right;
-        flex-shrink: 0;
-    }
-
-    @@media (max-width: 720px) {
-        .quality-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .visuals-grid {
-            grid-template-columns: 1fr;
-        }
+    @@media (max-width: 1024px) {
+        .diagnostics-grid { grid-template-columns: 1fr; }
+        .quality-grid { grid-template-columns: repeat(2, 1fr); }
     }
 </style>

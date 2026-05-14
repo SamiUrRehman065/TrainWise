@@ -8,182 +8,201 @@
 @using TrainWise.Web.Components.Common
 @using TrainWise.Web.Models
 
-
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="alert alert-warning">
-        <p>Please <a href="/login">sign in</a> to view datasets.</p>
-    </div>
-}
-else if (_isLoading)
-{
-    <div class="card">
-        <div class="loading-spinner"></div>
-        <p class="muted" style="text-align:center;">Loading dataset details...</p>
-    </div>
-}
-else if (_summary is null)
-{
-    <div class="empty-state">
-        <h3>Dataset not found</h3>
-        <p class="muted">The dataset you're looking for doesn't exist or has been deleted.</p>
-        <a href="/datasets" class="button primary" style="margin-top:16px;">Back to Datasets</a>
-    </div>
-}
-else
-{
-    <section class="page-header">
-        <div>
-            <h1>@_datasetName</h1>
-            <p class="lead">Dataset analysis and metadata</p>
-        </div>
-        <div class="header-actions">
-            <a class="button primary" href="@($"/datasets/{Id}/eda")">Open EDA Dashboard</a>
-            <button class="button ghost" @onclick="DeleteAsync">Delete</button>
-        </div>
-    </section>
-
-    @* Overview *@
-    <div class="detail-section">
-        <h3>Overview</h3>
-        <div class="overview-grid">
-            <div class="ov-item">
-                <span class="ov-label">Created</span>
-                <span class="ov-value">@_uploadedAt.ToString("MMM dd, yyyy HH:mm")</span>
-            </div>
-            <div class="ov-item">
-                <span class="ov-label">Rows</span>
-                <span class="ov-value">@_summary.RowCount</span>
-            </div>
-            <div class="ov-item">
-                <span class="ov-label">Columns</span>
-                <span class="ov-value">@_summary.ColumnCount</span>
-            </div>
-            <div class="ov-item">
-                <span class="ov-label">Imbalance Ratio</span>
-                <span class="ov-value">@(_summary.ImbalanceRatio?.ToString("0.00") ?? "N/A")</span>
-            </div>
-        </div>
-    </div>
-
-    @* Columns *@
-    @if (_summary.ColumnTypes?.Any() == true)
+<div class="dataset-detail-page">
+    @if (!SessionState.IsAuthenticated)
     {
-        <div class="detail-section">
-            <h3>Columns</h3>
-            <div class="columns-list">
-                @foreach (var col in _summary.Columns)
-                {
-                    <div class="column-item">
-                        <span class="col-name">@col</span>
-                        <span class="col-type tag">@(_summary.ColumnTypes.GetValueOrDefault(col, "unknown"))</span>
-                    </div>
-                }
-            </div>
+        <div class="tw-card animate-fade-up">
+            <p>Please <a href="/login">sign in</a> to view datasets.</p>
         </div>
     }
-
-    @* Data Preview *@
-    @if (_summary.Preview?.Any() == true)
+    else if (_isLoading)
     {
-        <div class="detail-section">
-            <h3>Data Preview</h3>
-            <div class="table-container" style="overflow-x:auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            @foreach (var col in _summary.Columns.Take(5))
-                            {
-                                <th>@col</th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in _summary.Preview.Take(5))
+        <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
+            <div class="loading-spinner"></div>
+            <p class="stat-label" style="margin-top: 16px;">Analyzing Dataset...</p>
+        </div>
+    }
+    else if (_summary is null)
+    {
+        <div class="tw-card empty-state animate-fade-up">
+            <div class="empty-icon">📂</div>
+            <h3>Dataset not found</h3>
+            <p class="subtitle">The dataset you're looking for doesn't exist or has been deleted.</p>
+            <button class="tw-btn-primary" style="margin-top: 24px;" @onclick='() => NavManager.NavigateTo("/datasets")'>Back to Datasets</button>
+        </div>
+    }
+    else
+    {
+        <section class="tw-section-header animate-fade-up">
+            <h1 class="text-gradient">@_datasetName</h1>
+            <p class="subtitle">Detailed metadata, feature analysis, and exploratory insights for this dataset.</p>
+            <div class="header-actions">
+                <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo($"/datasets/{Id}/eda")'>
+                    📊 Open EDA Dashboard
+                </button>
+                <button class="tw-btn-danger" @onclick="DeleteAsync">
+                    🗑️ Delete
+                </button>
+            </div>
+        </section>
+
+        <!-- STATS GRID -->
+        <div class="stats-overview-grid animate-fade-up">
+            <div class="tw-stat-card">
+                <span class="stat-label">Total Rows</span>
+                <span class="stat-number">@_summary.RowCount.ToString("N0")</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">Columns</span>
+                <span class="stat-number">@_summary.ColumnCount</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">Imbalance Ratio</span>
+                <span class="stat-number">@(_summary.ImbalanceRatio?.ToString("0.00") ?? "1.00")</span>
+            </div>
+            <div class="tw-stat-card">
+                <span class="stat-label">Created At</span>
+                <span class="stat-number small">@_uploadedAt.ToString("MMM dd, yyyy")</span>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <!-- LEFT COLUMN: COLUMNS & PREVIEW -->
+            <div class="detail-main animate-fade-up">
+                <div class="tw-card">
+                    <h3>📁 Feature Definitions</h3>
+                    <div class="columns-grid">
+                        @foreach (var col in _summary.Columns)
                         {
-                            <tr>
-                                @foreach (var cell in row)
-                                {
-                                    <td>@cell</td>
-                                }
-                            </tr>
+                            <div class="column-pill">
+                                <span class="col-name">@col</span>
+                                <span class="tw-badge info">@(_summary.ColumnTypes?.GetValueOrDefault(col, "unknown"))</span>
+                            </div>
                         }
-                    </tbody>
-                </table>
+                    </div>
+                </div>
+
+                @if (_summary.Preview?.Any() == true)
+                {
+                    <div class="tw-card table-card">
+                        <h3>📄 Data Preview (First 5 Rows)</h3>
+                        <div class="table-wrapper">
+                            <table class="tw-table">
+                                <thead>
+                                    <tr>
+                                        @foreach (var col in _summary.Columns.Take(6))
+                                        {
+                                            <th>@col</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in _summary.Preview.Take(5))
+                                    {
+                                        <tr>
+                                            @foreach (var cell in row.Take(6))
+                                            {
+                                                <td>@cell</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- RIGHT COLUMN: EDA & EXPERIMENTS -->
+            <div class="detail-sidebar animate-fade-up" style="animation-delay: 0.1s;">
+                <div class="tw-card eda-card">
+                    <div class="card-header">
+                        <h3>🧪 EDA Insights</h3>
+                        <button class="tw-btn-ghost btn-xs" @onclick="RunEdaAsync" disabled="_isEdaLoading">
+                            @( _isEdaLoading ? "Running..." : "Refresh")
+                        </button>
+                    </div>
+
+                    @if (_eda is null)
+                    {
+                        <p class="text-muted">Run exploratory analysis to see memory usage and feature correlations.</p>
+                    }
+                    else
+                    {
+                        <div class="eda-stats">
+                            <div class="eda-stat-item">
+                                <label>Memory Usage</label>
+                                <span>@_eda.MemoryUsageMb.ToString("0.00") MB</span>
+                            </div>
+                            <div class="eda-stat-item">
+                                <label>Duplicates</label>
+                                <span>@_eda.DuplicateRows (@_eda.DuplicatePercentage.ToString("0.##")%)</span>
+                            </div>
+                        </div>
+
+                        @if (_eda.TopTargetCorrelations.Any())
+                        {
+                            <h4 class="sub-heading">Feature Importance</h4>
+                            <div class="correlation-list">
+                                @foreach (var c in _eda.TopTargetCorrelations.Take(5))
+                                {
+                                    var width = (int)(Math.Min(1, Math.Abs(c.Correlation)) * 100);
+                                    <div class="corr-item">
+                                        <div class="corr-label">
+                                            <span>@c.Feature</span>
+                                            <span class="tw-mono">@c.Correlation.ToString("0.###")</span>
+                                        </div>
+                                        <div class="tw-progress-bar">
+                                            <div class="progress-fill" style="width:@($"{width}%")"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="tw-card">
+                    <h3>🏆 Related Experiments</h3>
+                    @if (_relatedExperiments?.Any() == true)
+                    {
+                        <div class="related-experiments">
+                            @foreach (var exp in _relatedExperiments.Take(4))
+                            {
+                                <div class="exp-mini-card">
+                                    <div class="exp-info">
+                                        <span class="exp-name">@exp.ModelName</span>
+                                        <span class="exp-meta">@exp.TaskType &middot; @exp.CreatedAt.ToString("MMM dd")</span>
+                                    </div>
+                                    <button class="tw-btn-ghost btn-xs" @onclick='() => NavManager.NavigateTo($"/experiments/{exp.ExperimentId}")'>
+                                        View
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No models trained on this dataset yet.</p>
+                        <button class="tw-btn-primary btn-sm" style="width: 100%;" @onclick='() => NavManager.NavigateTo("/training")'>
+                            Train Model
+                        </button>
+                    }
+                </div>
             </div>
         </div>
     }
-
-    @* Related Experiments *@
-    <div class="detail-section">
-        <div class="section-head">
-            <h3>EDA Insights</h3>
-            <button class="button small ghost" @onclick="RunEdaAsync" disabled="_isEdaLoading">@( _isEdaLoading ? "Running..." : "Refresh EDA")</button>
-        </div>
-        @if (_eda is null)
-        {
-            <p class="muted">No EDA report loaded yet. Click <strong>Refresh EDA</strong>.</p>
-        }
-        else
-        {
-            <div class="overview-grid">
-                <div class="ov-item"><span class="ov-label">Memory</span><span class="ov-value">@_eda.MemoryUsageMb.ToString("0.00") MB</span></div>
-                <div class="ov-item"><span class="ov-label">Duplicate Rows</span><span class="ov-value">@_eda.DuplicateRows (@_eda.DuplicatePercentage.ToString("0.##")%)</span></div>
-                <div class="ov-item"><span class="ov-label">Numeric Columns</span><span class="ov-value">@_eda.NumericColumns.Count</span></div>
-                <div class="ov-item"><span class="ov-label">Categorical Columns</span><span class="ov-value">@_eda.CategoricalColumns.Count</span></div>
-            </div>
-
-            @if (_eda.TopTargetCorrelations.Any())
-            {
-                <h4 style="margin-top:16px;">Top Feature Correlations</h4>
-                @foreach (var c in _eda.TopTargetCorrelations)
-                {
-                    var width = (int)(Math.Min(1, Math.Abs(c.Correlation)) * 100);
-                    <div class="bar-row">
-                        <span class="bar-label">@c.Feature (@c.Correlation.ToString("0.###"))</span>
-                        <div class="bar-track"><div class="bar-fill" style="width:@($"{width}%")"></div></div>
-                    </div>
-                }
-            }
-        }
-    </div>
-
-    <div class="detail-section">
-        <h3>Related Experiments</h3>
-        @if (_relatedExperiments?.Any() == true)
-        {
-            <div class="related-list">
-                @foreach (var exp in _relatedExperiments.Take(5))
-                {
-                    <div class="related-row">
-                        <div class="related-info">
-                            <div class="related-name">@exp.ModelName</div>
-                            <div class="related-meta">@exp.TaskType &middot; @exp.CreatedAt.ToString("MMM dd")</div>
-                        </div>
-                        <a href="@($"/experiments/{exp.ExperimentId}")" class="button small ghost">View</a>
-                    </div>
-                }
-            </div>
-        }
-        else
-        {
-            <p class="muted">No experiments yet. <a href="/training">Train a model</a> with this dataset.</p>
-        }
-    </div>
-}
+</div>
 
 @code {
-    [Parameter]
-    public string? Id { get; set; }
-
+    [Parameter] public string? Id { get; set; }
     private DatasetSummary? _summary;
     private List<ExperimentListItem>? _relatedExperiments;
     private EdaReport? _eda;
     private bool _isEdaLoading;
     private bool _isLoading = true;
-    private string _datasetName = "Dataset";
+    private string _datasetName = "Dataset Details";
     private DateTime _uploadedAt = DateTime.MinValue;
-    private List<BreadcrumbItem> _breadcrumbs = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -192,7 +211,6 @@ else
             _isLoading = false;
             return;
         }
-
         await LoadDatasetDetails();
     }
 
@@ -210,14 +228,7 @@ else
 
             if (_summary is not null)
             {
-                _datasetName = $"Dataset {_summary.DatasetId[..8]}...";
-
-                _breadcrumbs = new()
-                {
-                    new BreadcrumbItem { Label = "Datasets", Url = "/datasets" },
-                    new BreadcrumbItem { Label = _datasetName }
-                };
-
+                _datasetName = $"Dataset {datasetId.ToString()[..8].ToUpper()}";
                 var history = await ExperimentApi.GetHistoryAsync(page: 1, pageSize: 50);
                 if (history?.Items is not null)
                 {
@@ -231,7 +242,7 @@ else
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading dataset details for {Id}", Id);
+            Logger.LogError(ex, "Error loading dataset details");
         }
         finally
         {
@@ -241,8 +252,7 @@ else
 
     private async Task RunEdaAsync()
     {
-        if (!Guid.TryParse(Id, out var datasetId))
-            return;
+        if (!Guid.TryParse(Id, out var datasetId)) return;
         _isEdaLoading = true;
         try
         {
@@ -257,129 +267,196 @@ else
 
     private async Task DeleteAsync()
     {
-        if (!await ConfirmDelete())
-            return;
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Permanently delete this dataset and all related experiments?");
+        if (!confirmed) return;
 
-        try
+        if (Guid.TryParse(Id, out var datasetId))
         {
-            if (!Guid.TryParse(Id, out var datasetId))
-                return;
-
-            var success = await DatasetApi.DeleteAsync(datasetId);
-
-            if (success)
-            {
+            if (await DatasetApi.DeleteAsync(datasetId))
                 NavManager.NavigateTo("/datasets");
-            }
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting dataset {Id}", Id);
-        }
-    }
-
-    private async Task<bool> ConfirmDelete()
-    {
-        return await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this dataset?");
     }
 }
 
 <style>
-    .detail-section {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        padding: var(--space-5);
-    }
-
-    .detail-section + .detail-section {
-        margin-top: var(--space-4);
-    }
-
-    .detail-section h3 {
-        font-size: 16px;
-        margin-bottom: var(--space-4);
-        padding-bottom: var(--space-3);
-        border-bottom: 1px solid var(--color-border);
-    }
-    .section-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
-    .bar-row { margin-top:8px; }
-    .bar-label { font-size:12px; color:var(--color-text-secondary); display:block; margin-bottom:4px; }
-    .bar-track { background:var(--color-border); height:8px; border-radius:20px; overflow:hidden; }
-    .bar-fill { background:var(--color-accent); height:8px; }
-
-    .overview-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: var(--space-4);
-    }
-
-    .ov-item {
+    .dataset-detail-page {
         display: flex;
         flex-direction: column;
-        gap: var(--space-1);
+        gap: 32px;
     }
 
-    .ov-label {
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--color-text-secondary);
-    }
-
-    .ov-value {
-        font-family: var(--font-mono);
-        font-size: 18px;
-    }
-
-    .columns-list {
+    .stats-overview-grid {
         display: grid;
-        gap: var(--space-2);
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
     }
 
-    .column-item {
+    .stat-number.small { font-size: 1.25rem; }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 32px;
+        align-items: start;
+    }
+
+    .detail-main {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+    }
+
+    .detail-main h3, .detail-sidebar h3 {
+        font-size: 1.1rem;
+        margin-bottom: 24px;
         display: flex;
         align-items: center;
+        gap: 12px;
+    }
+
+    .columns-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .column-pill {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        padding: 12px 16px;
+        display: flex;
         justify-content: space-between;
-        padding: var(--space-3) var(--space-3);
-        border: 1px solid var(--color-border);
+        align-items: center;
     }
 
     .col-name {
-        font-weight: 500;
-        font-size: 14px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-h1);
     }
 
-    .col-type {
-        font-size: 10px;
+    .table-card { padding: 0 !important; }
+    .table-card h3 { padding: 24px 24px 0; }
+
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        padding: 24px;
     }
 
-    .related-list {
-        display: grid;
-        gap: var(--space-2);
+    .tw-table {
+        width: 100%;
+        border-collapse: collapse;
     }
 
-    .related-row {
+    .tw-table th {
+        text-align: left;
+        padding: 12px 16px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .tw-table td {
+        padding: 12px 16px;
+        font-size: 0.85rem;
+        color: var(--text-body);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .card-header {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        padding: var(--space-3);
-        border: 1px solid var(--color-border);
+        align-items: center;
+        margin-bottom: 24px;
     }
+    .card-header h3 { margin-bottom: 0; }
 
-    .related-info {
+    .eda-stats {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 12px;
+        margin-bottom: 24px;
     }
 
-    .related-name {
-        font-size: 14px;
-        font-weight: 500;
+    .eda-stat-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9rem;
     }
 
-    .related-meta {
-        font-size: 12px;
-        color: var(--color-text-secondary);
+    .eda-stat-item label { color: var(--text-muted); }
+    .eda-stat-item span { font-weight: 700; color: var(--text-h1); }
+
+    .sub-heading {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 0.5px;
+        margin: 24px 0 12px;
+    }
+
+    .correlation-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .corr-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .corr-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+    }
+
+    .tw-progress-bar {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: var(--accent-grad);
+        border-radius: 10px;
+    }
+
+    .related-experiments {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .exp-mini-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        padding: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .exp-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .exp-name { font-weight: 600; font-size: 0.85rem; color: var(--text-h1); }
+    .exp-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    .btn-xs { padding: 4px 12px !important; font-size: 0.75rem !important; }
+
+    @@media (max-width: 1200px) {
+        .stats-overview-grid { grid-template-columns: repeat(2, 1fr); }
+        .detail-grid { grid-template-columns: 1fr; }
     }
 </style>

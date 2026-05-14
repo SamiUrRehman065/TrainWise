@@ -2,81 +2,110 @@
 @page "/history"
 @inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
 @inject TrainWise.Web.Services.State.SessionState SessionState
+@inject NavigationManager NavManager
 @using TrainWise.Web.Components.Common
 
-
-<div class="page-header">
-    <h1>Training history</h1>
-    <p class="page-desc">Review all your experiment runs and performance metrics.</p>
-    <div class="page-actions">
-        <a href="/training" class="button primary">New training</a>
-    </div>
-</div>
-
-@if (!SessionState.IsAuthenticated)
-{
-    <div class="alert alert-warning">
-        <p>Please <a href="/login">sign in</a> to view your experiments.</p>
-    </div>
-}
-else
-{
-    @if (_isLoading)
-    {
-        <div class="state-card">
-            <div class="loading-spinner"></div>
-            <p class="state-text">Loading experiments…</p>
+<div class="experiments-page">
+    <section class="tw-section-header">
+        <h1 class="text-gradient">Training History</h1>
+        <p class="subtitle">Review all your experiment runs, performance metrics, and model insights.</p>
+        <div class="header-actions">
+            <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/training")'>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                <span>New training</span>
+            </button>
         </div>
-    }
-    else if (_history is null || _history.Items.Count == 0)
+    </section>
+
+    @if (!SessionState.IsAuthenticated)
     {
-        <div class="state-card empty">
-            <h3>No experiments yet</h3>
-            <p class="state-text">Start by uploading a dataset and training your first model.</p>
-            <a href="/datasets" class="button primary">Get started</a>
+        <div class="tw-card animate-fade-up">
+            <p>Please <a href="/login">sign in</a> to view your experiments.</p>
         </div>
     }
     else
     {
-        <div class="experiments-grid">
-            @foreach (var item in _history.Items.OrderByDescending(x => x.CreatedAt))
-            {
-                <div class="exp-card">
-                    <div class="exp-header">
-                        <span class="tag">@item.TaskType</span>
-                        <span class="exp-date">@item.CreatedAt.ToString("MMM dd, yyyy")</span>
-                    </div>
-                    <div class="exp-body">
-                        <h4>@item.ModelName</h4>
-                        <div class="exp-details">
-                            <div class="exp-row">
-                                <span class="exp-label">Dataset</span>
-                                <span class="exp-value">@item.DatasetName</span>
+        @if (_isLoading)
+        {
+            <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
+                <div class="loading-spinner"></div>
+                <p class="stat-label" style="margin-top: 16px;">Loading experiments...</p>
+            </div>
+        }
+        else if (_history is null || _history.Items.Count == 0)
+        {
+            <div class="tw-card empty-state animate-fade-up">
+                <div class="empty-icon">📊</div>
+                <h3>No experiments yet</h3>
+                <p class="subtitle">Start by uploading a dataset and training your first model.</p>
+                <button class="tw-btn-primary" style="margin-top: 24px;" @onclick='() => NavManager.NavigateTo("/datasets")'>Get started</button>
+            </div>
+        }
+        else
+        {
+            <div class="experiments-search animate-fade-up">
+                <div class="search-input-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="tw-input" placeholder="Search by model or dataset name..." @bind="_searchTerm" @bind:event="oninput" />
+                </div>
+                <button class="tw-btn-ghost" @onclick='() => NavManager.NavigateTo("/experiments/compare")'>
+                    ⚖️ Compare Runs
+                </button>
+            </div>
+
+            <div class="experiments-list">
+                @foreach (var item in FilteredHistory.OrderByDescending(x => x.CreatedAt))
+                {
+                    <div class="tw-card experiment-card animate-fade-up">
+                        <div class="card-left">
+                            <div class="model-info">
+                                <h3>@item.ModelName</h3>
+                                <span class="tw-badge info">@item.TaskType</span>
                             </div>
-                            <div class="exp-row">
-                                <span class="exp-label">Metrics</span>
-                                <span class="exp-value">@item.MetricsSummary</span>
+                            <div class="meta-info">
+                                <div class="meta-item">
+                                    <span class="meta-icon">📁</span>
+                                    <span class="text-body">@item.DatasetName</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-icon">📅</span>
+                                    <span class="text-muted">@item.CreatedAt.ToString("MMM dd, yyyy • HH:mm")</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-center">
+                            <div class="metric-display">
+                                <span class="stat-label">Performance</span>
+                                <span class="stat-number small text-gradient">@item.MetricsSummary</span>
+                            </div>
+                        </div>
+
+                        <div class="card-right">
+                            <div class="experiment-actions">
+                                <a href="@($"/experiments/{item.ExperimentId}")" class="tw-btn-ghost btn-sm">Details</a>
+                                <a href="@($"/results/{item.ExperimentId}/recommendations")" class="tw-btn-ghost btn-sm">Insights</a>
+                                <span class="tw-badge success status-badge">Completed</span>
                             </div>
                         </div>
                     </div>
-                    <div class="exp-actions">
-                        <a href="@($"/experiments/{item.ExperimentId}")" class="button ghost small">Details</a>
-                        <a href="@($"/results/{item.ExperimentId}/recommendations")" class="button ghost small">Insights</a>
-                        <a href="/experiments/compare" class="button ghost small">Compare</a>
-                    </div>
-                </div>
-            }
-        </div>
+                }
+            </div>
+        }
     }
-}
+</div>
 
 @code {
     private TrainWise.Web.Models.ExperimentList? _history;
     private bool _isLoading = true;
-    private List<BreadcrumbItem> _breadcrumbs = new()
-    {
-        new BreadcrumbItem { Label = "History" }
-    };
+    private string _searchTerm = "";
+
+    private IEnumerable<TrainWise.Web.Models.ExperimentListItem> FilteredHistory => 
+        _history?.Items.Where(x => 
+            string.IsNullOrEmpty(_searchTerm) || 
+            x.ModelName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) || 
+            x.DatasetName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)) ?? 
+        Enumerable.Empty<TrainWise.Web.Models.ExperimentListItem>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -86,162 +115,146 @@ else
 }
 
 <style>
-    .page-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: var(--space-5);
-        margin-bottom: var(--space-6);
-        flex-wrap: wrap;
-    }
-
-    .page-header h1 {
-        font-family: var(--font-ui);
-        font-size: 1.75rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-1);
-        color: var(--color-text);
-        width: 100%;
-    }
-
-    .page-desc {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: 0.9375rem;
-    }
-
-    .page-actions {
-        flex-shrink: 0;
-    }
-
-    .experiments-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: var(--space-4);
-    }
-
-    .exp-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
+    .experiments-page {
         display: flex;
         flex-direction: column;
+        gap: 32px;
     }
 
-    .exp-header {
+    .experiments-search {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        background: var(--bg-surface);
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--border-subtle);
+    }
+
+    .search-input-wrapper {
+        position: relative;
+        flex: 1;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1rem;
+        opacity: 0.5;
+    }
+
+    .search-input-wrapper .tw-input {
+        padding-left: 44px;
+    }
+
+    .experiments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .experiment-card {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr 1fr;
+        align-items: center;
+        gap: 32px;
+        padding: 20px 24px;
+    }
+
+    .model-info {
         display: flex;
         align-items: center;
-        gap: var(--space-3);
-        padding: var(--space-3) var(--space-4);
-        border-bottom: 1px solid var(--color-border);
+        gap: 12px;
+        margin-bottom: 12px;
     }
 
-    .exp-date {
-        font-size: 0.8125rem;
-        color: var(--color-text-secondary);
-    }
-
-    .exp-body {
-        padding: var(--space-4);
-        flex: 1;
-    }
-
-    .exp-body h4 {
-        font-family: var(--font-ui);
-        font-size: 1rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-3);
-        color: var(--color-text);
-    }
-
-    .exp-details {
-        display: grid;
-        gap: var(--space-2);
-    }
-
-    .exp-row {
-        display: flex;
-        justify-content: space-between;
-        gap: var(--space-3);
-        font-size: 0.8125rem;
-    }
-
-    .exp-label {
-        color: var(--color-text-secondary);
-        font-weight: 500;
-    }
-
-    .exp-value {
-        font-weight: 500;
-        color: var(--color-text);
-        text-align: right;
-    }
-
-    .exp-actions {
-        padding: var(--space-3) var(--space-4);
-        border-top: 1px solid var(--color-border);
-        display: flex;
-        gap: var(--space-2);
-    }
-
-    .exp-actions .button.small {
-        flex: 1;
-        justify-content: center;
-        padding: var(--space-2) var(--space-3);
-        font-size: 0.8125rem;
-    }
-
-    .state-card {
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        padding: var(--space-7) var(--space-5);
-        text-align: center;
-    }
-
-    .state-card.empty h3 {
-        font-family: var(--font-ui);
-        font-size: 1.125rem;
-        font-weight: 500;
-        margin: 0 0 var(--space-2);
-        color: var(--color-text);
-    }
-
-    .state-text {
-        margin: 0 0 var(--space-4);
-        color: var(--color-text-secondary);
-        font-size: 0.875rem;
-    }
-
-    .state-card .button {
-        display: inline-flex;
-    }
-
-    .alert {
-        padding: var(--space-3) var(--space-4);
-        font-size: 0.875rem;
-        border: 1px solid var(--color-border);
-    }
-
-    .alert p {
+    .model-info h3 {
         margin: 0;
+        font-size: 1.15rem;
     }
 
-    .alert a {
-        color: var(--color-accent);
-        text-decoration: underline;
+    .meta-info {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 
-    .alert-warning {
-        background: var(--color-bg);
-        color: var(--color-text);
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
     }
 
-    @@media (max-width: 720px) {
-        .page-header {
+    .meta-icon {
+        font-size: 1rem;
+    }
+
+    .metric-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .experiment-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .status-badge {
+        margin-left: 8px;
+    }
+
+    .btn-sm {
+        padding: 6px 16px !important;
+        font-size: 0.8rem !important;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(129, 140, 248, 0.1);
+        border-top-color: var(--accent-violet);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto;
+    }
+
+
+    @@media (max-width: 900px) {
+        .experiment-card {
+            grid-template-columns: 1fr;
+            gap: 20px;
+            text-align: center;
+        }
+        .model-info, .meta-item, .experiment-actions {
+            justify-content: center;
+        }
+        .experiments-search {
             flex-direction: column;
         }
-
-        .experiments-grid {
-            grid-template-columns: 1fr;
+        .search-input-wrapper {
+            width: 100%;
         }
     }
 </style>
