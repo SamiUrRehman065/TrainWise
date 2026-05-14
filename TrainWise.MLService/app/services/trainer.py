@@ -100,6 +100,18 @@ def train_model(request: TrainRequest) -> TrainResult:
         cv_mean,
     )
 
+    y_train_pred = model.predict(x_train)
+    if request.taskType == "classification":
+        train_acc = float(accuracy_score(y_train, y_train_pred))
+        train_f1 = float(f1_score(y_train, y_train_pred, average="weighted"))
+        result.classificationMetrics.trainAccuracy = train_acc
+        result.classificationMetrics.trainF1Score = train_f1
+    else:
+        train_rmse = float(mean_squared_error(y_train, y_train_pred, squared=False))
+        train_r2 = float(r2_score(y_train, y_train_pred))
+        result.regressionMetrics.trainRmse = train_rmse
+        result.regressionMetrics.trainR2 = train_r2
+
     analysis = analyze_dataset(file_path, request.datasetId)
     engine = RecommendationEngine()
     metrics_payload = _metrics_payload(result)

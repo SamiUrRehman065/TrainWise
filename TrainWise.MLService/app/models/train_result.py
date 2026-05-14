@@ -8,11 +8,15 @@ class ClassificationMetrics(BaseModel):
     recall: float
     f1Score: float
     confusionMatrix: List[List[int]]
+    trainAccuracy: Optional[float] = None
+    trainF1Score: Optional[float] = None
 
 class RegressionMetrics(BaseModel):
     r2Score: float
     rmse: float
     mae: float
+    trainR2: Optional[float] = None
+    trainRmse: Optional[float] = None
 
 class TrainResult(BaseModel):
     experimentId: str

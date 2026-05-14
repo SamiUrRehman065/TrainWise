@@ -39,6 +39,27 @@ public sealed class ExperimentController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("{id:guid}/recommendations")]
+    public async Task<ActionResult<List<TrainWise.API.Contracts.Training.RecommendationDto>>> GetRecommendationsAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _experimentService.GetRecommendationsAsync(id, userId.Value, cancellationToken);
+        if (result is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(result);
+    }
+
+    [Authorize]
     [HttpGet("history")]
     public async Task<ActionResult<ExperimentListDto>> GetHistoryAsync(
         [FromQuery] int page = 1,

@@ -49,6 +49,109 @@ else
     }
     else
     {
+        @if (_experiment?.Result?.ClassificationMetrics != null)
+        {
+            var classMetrics = _experiment.Result.ClassificationMetrics;
+            var trainAcc = classMetrics.TrainAccuracy ?? 0;
+            var testAcc = classMetrics.Accuracy;
+            var trainF1 = classMetrics.TrainF1Score ?? 0;
+            var testF1 = classMetrics.F1Score;
+
+            <div class="metrics-visuals">
+                <h3>Performance Tradeoffs & Visuals</h3>
+                <div class="visuals-grid">
+                    <div class="visual-card">
+                        <h4>Bias vs Variance (Accuracy)</h4>
+                        <p class="visual-desc">Comparing Training vs Testing accuracy to detect Overfitting or Underfitting.</p>
+                        <div class="bar-chart">
+                            <div class="bar-row">
+                                <span class="bar-label">Train Acc.</span>
+                                <div class="bar-track"><div class="bar-fill model1" style="width: @((trainAcc * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@trainAcc.ToString("P1")</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label">Test Acc.</span>
+                                <div class="bar-track"><div class="bar-fill model2" style="width: @((testAcc * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@testAcc.ToString("P1")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="visual-card">
+                        <h4>Precision vs Recall Tradeoff</h4>
+                        <p class="visual-desc">Balancing false positives (Precision) against false negatives (Recall).</p>
+                        <div class="bar-chart">
+                            <div class="bar-row">
+                                <span class="bar-label">Precision</span>
+                                <div class="bar-track"><div class="bar-fill" style="background-color: var(--color-accent); width: @((classMetrics.Precision * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@classMetrics.Precision.ToString("P1")</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label">Recall</span>
+                                <div class="bar-track"><div class="bar-fill" style="background-color: #D4A017; width: @((classMetrics.Recall * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@classMetrics.Recall.ToString("P1")</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label">F1-Score</span>
+                                <div class="bar-track"><div class="bar-fill" style="background-color: var(--color-positive); width: @((testF1 * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@testF1.ToString("P1")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (_experiment?.Result?.RegressionMetrics != null)
+        {
+            var regMetrics = _experiment.Result.RegressionMetrics;
+            var trainR2 = regMetrics.TrainR2 ?? 0;
+            var testR2 = regMetrics.R2Score;
+            var trainRmse = regMetrics.TrainRmse ?? 0;
+            var testRmse = regMetrics.Rmse;
+            
+            var maxRmse = Math.Max(trainRmse, testRmse) * 1.2;
+            if (maxRmse == 0) maxRmse = 1;
+
+            <div class="metrics-visuals">
+                <h3>Regression Diagnostics</h3>
+                <div class="visuals-grid">
+                    <div class="visual-card">
+                        <h4>Bias vs Variance (R²)</h4>
+                        <p class="visual-desc">Comparing Training vs Testing R² to detect Overfitting or Underfitting.</p>
+                        <div class="bar-chart">
+                            <div class="bar-row">
+                                <span class="bar-label">Train R²</span>
+                                <div class="bar-track"><div class="bar-fill model1" style="width: @((Math.Max(0, trainR2) * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@trainR2.ToString("0.000")</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label">Test R²</span>
+                                <div class="bar-track"><div class="bar-fill model2" style="width: @((Math.Max(0, testR2) * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@testR2.ToString("0.000")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="visual-card">
+                        <h4>Error Distribution (RMSE vs MAE)</h4>
+                        <p class="visual-desc">RMSE penalizes large errors more heavily than MAE.</p>
+                        <div class="bar-chart">
+                            <div class="bar-row">
+                                <span class="bar-label">RMSE</span>
+                                <div class="bar-track"><div class="bar-fill" style="background-color: var(--color-negative); width: @((regMetrics.Rmse / maxRmse * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@regMetrics.Rmse.ToString("0.000")</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label">MAE</span>
+                                <div class="bar-track"><div class="bar-fill" style="background-color: #D4A017; width: @((regMetrics.Mae / maxRmse * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+                                <span class="bar-value">@regMetrics.Mae.ToString("0.000")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
         <div class="rec-list">
             @foreach (var rec in _recommendations)
             {
@@ -103,7 +206,7 @@ else
 
     private ExperimentDetail? _experiment;
     private DatasetSummary? _datasetSummary;
-    private List<RecommendationItem> _recommendations = new();
+    private List<TrainWise.Web.Models.Recommendation> _recommendations = new();
     private bool _isLoading = true;
     private int _totalMissing;
     private List<BreadcrumbItem> _breadcrumbs = new()
@@ -137,7 +240,11 @@ else
                 _totalMissing = _datasetSummary.MissingValues.Values.Sum(m => m.Count);
             }
 
-            GenerateRecommendations();
+            var apiRecs = await ExperimentApi.GetRecommendationsAsync(ExperimentId);
+            if (apiRecs is not null)
+            {
+                _recommendations = apiRecs;
+            }
         }
         catch
         {
@@ -149,194 +256,21 @@ else
         }
     }
 
-    private void GenerateRecommendations()
+    private string GetSeverityClass(string severity) => severity.ToLowerInvariant() switch
     {
-        _recommendations = new List<RecommendationItem>();
-
-        if (_experiment is null) return;
-
-        var metrics = _experiment.Metrics;
-        var hyperParams = _experiment.HyperParameters;
-
-        // R-01: High missing values in dataset
-        if (_datasetSummary is not null)
-        {
-            foreach (var kvp in _datasetSummary.MissingValues)
-            {
-                if (kvp.Value.Percentage > 20)
-                {
-                    _recommendations.Add(new RecommendationItem
-                    {
-                        RuleId = "R-01",
-                        Severity = RecommendationSeverity.Warning,
-                        Message = $"High missing data detected in column '{kvp.Key}' ({kvp.Value.Percentage:F1}% missing).",
-                        Action = "Consider dropping this column or using model-based imputation (e.g., KNNImputer or IterativeImputer)."
-                    });
-                    break;
-                }
-            }
-        }
-
-        // R-02: Class imbalance
-        if (_datasetSummary?.ImbalanceRatio is not null && _datasetSummary.ImbalanceRatio > 2)
-        {
-            var smoteApplied = hyperParams?.ContainsKey("applySmote") == true
-                && hyperParams["applySmote"]?.ToString() == "True";
-            if (!smoteApplied)
-            {
-                _recommendations.Add(new RecommendationItem
-                {
-                    RuleId = "R-02",
-                    Severity = RecommendationSeverity.Warning,
-                    Message = $"Dataset imbalance detected (ratio: {_datasetSummary.ImbalanceRatio.Value:F2}). Minority classes may be underrepresented.",
-                    Action = "Enable SMOTE oversampling during training to improve minority-class recall and overall F1 score."
-                });
-            }
-        }
-
-        // R-03: Potential overfitting (near-perfect accuracy)
-        if (metrics?.Accuracy is not null && metrics.Accuracy > 0.98)
-        {
-            _recommendations.Add(new RecommendationItem
-            {
-                RuleId = "R-03",
-                Severity = RecommendationSeverity.Info,
-                Message = $"Near-perfect accuracy ({metrics.Accuracy:P1}) detected. This may indicate overfitting, especially on small datasets.",
-                Action = "Enable cross-validation (5-fold) during training to verify generalization performance."
-            });
-        }
-
-        // R-04: Low F1 score
-        if (metrics?.F1Score is not null && metrics.F1Score < 0.60)
-        {
-            _recommendations.Add(new RecommendationItem
-            {
-                RuleId = "R-04",
-                Severity = RecommendationSeverity.Critical,
-                Message = $"Low F1-score ({metrics.F1Score:F2}). The model is struggling with this configuration.",
-                Action = "Try feature scaling, switch to a different model (e.g., SVM with RBF kernel), increase training data, or tune hyperparameters."
-            });
-        }
-
-        // R-05: Low n_estimators for RandomForest
-        if (_experiment.ModelName.Contains("RandomForest", StringComparison.OrdinalIgnoreCase)
-            && hyperParams?.ContainsKey("n_estimators") == true)
-        {
-            if (int.TryParse(hyperParams["n_estimators"]?.ToString(), out var nEstimators) && nEstimators < 50)
-            {
-                _recommendations.Add(new RecommendationItem
-                {
-                    RuleId = "R-05",
-                    Severity = RecommendationSeverity.Info,
-                    Message = $"Low tree count ({nEstimators} estimators) detected for Random Forest.",
-                    Action = "Increase n_estimators to at least 100 for more stable and accurate predictions."
-                });
-            }
-        }
-
-        // R-06: Low accuracy overall
-        if (metrics?.Accuracy is not null && metrics.Accuracy < 0.50 && metrics.Accuracy > 0)
-        {
-            _recommendations.Add(new RecommendationItem
-            {
-                RuleId = "R-06",
-                Severity = RecommendationSeverity.Critical,
-                Message = $"Low accuracy ({metrics.Accuracy:P1}). The current model configuration is not performing well.",
-                Action = "Consider trying a different model family, performing feature engineering, or checking data quality issues."
-            });
-        }
-
-        // R-07: Small dataset
-        if (_datasetSummary is not null && _datasetSummary.RowCount < 500)
-        {
-            _recommendations.Add(new RecommendationItem
-            {
-                RuleId = "R-07",
-                Severity = RecommendationSeverity.Info,
-                Message = $"Small dataset detected ({_datasetSummary.RowCount} rows). Model accuracy may be unreliable.",
-                Action = "Collect more training data or use cross-validation to get more reliable performance estimates."
-            });
-        }
-
-        // R-08: SVM/KNN without scaling
-        if ((_experiment.ModelName.Contains("SVM", StringComparison.OrdinalIgnoreCase)
-            || _experiment.ModelName.Contains("KNN", StringComparison.OrdinalIgnoreCase)
-            || _experiment.ModelName.Contains("K-NN", StringComparison.OrdinalIgnoreCase))
-            && hyperParams?.ContainsKey("scaling") == true)
-        {
-            var scaling = hyperParams["scaling"]?.ToString() ?? "none";
-            if (scaling.Equals("none", StringComparison.OrdinalIgnoreCase))
-            {
-                _recommendations.Add(new RecommendationItem
-                {
-                    RuleId = "R-08",
-                    Severity = RecommendationSeverity.Warning,
-                    Message = $"{_experiment.ModelName} is sensitive to feature scale, but no scaling was applied.",
-                    Action = "Enable StandardScaler or MinMaxScaler preprocessing to improve model performance."
-                });
-            }
-        }
-
-        // R-09: Precision-Recall imbalance
-        if (metrics?.Precision is not null && metrics?.Recall is not null
-            && metrics.Precision > 0 && metrics.Recall > 0)
-        {
-            var diff = Math.Abs(metrics.Precision - metrics.Recall);
-            if (diff > 0.3)
-            {
-                var higher = metrics.Precision > metrics.Recall ? "precision" : "recall";
-                _recommendations.Add(new RecommendationItem
-                {
-                    RuleId = "R-09",
-                    Severity = RecommendationSeverity.Info,
-                    Message = $"Significant imbalance between precision ({metrics.Precision:F2}) and recall ({metrics.Recall:F2}). {higher} is much higher.",
-                    Action = "Adjust the decision threshold or use class weights to balance precision and recall for your use case."
-                });
-            }
-        }
-
-        // R-10: Training duration too short (possible underfitting)
-        if (_experiment.TrainingDurationSec is not null && _experiment.TrainingDurationSec < 1.0
-            && _datasetSummary is not null && _datasetSummary.RowCount > 1000)
-        {
-            _recommendations.Add(new RecommendationItem
-            {
-                RuleId = "R-10",
-                Severity = RecommendationSeverity.Info,
-                Message = $"Training completed in only {_experiment.TrainingDurationSec:F1}s for {_datasetSummary.RowCount:N0} rows.",
-                Action = "Consider using a more complex model or increasing max_iter / n_estimators for better learning."
-            });
-        }
-    }
-
-    private string GetSeverityClass(RecommendationSeverity severity) => severity switch
-    {
-        RecommendationSeverity.Critical => "critical",
-        RecommendationSeverity.Warning => "warning",
+        "critical" => "critical",
+        "warning" => "warning",
+        "success" => "success",
         _ => "info"
     };
 
-    private string GetSeverityLabel(RecommendationSeverity severity) => severity switch
+    private string GetSeverityLabel(string severity) => severity.ToLowerInvariant() switch
     {
-        RecommendationSeverity.Critical => "Critical",
-        RecommendationSeverity.Warning => "Warning",
+        "critical" => "Critical",
+        "warning" => "Warning",
+        "success" => "Excellent",
         _ => "Suggestion"
     };
-
-    private sealed class RecommendationItem
-    {
-        public string RuleId { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-        public string Action { get; set; } = string.Empty;
-        public RecommendationSeverity Severity { get; set; } = RecommendationSeverity.Info;
-    }
-
-    private enum RecommendationSeverity
-    {
-        Info,
-        Warning,
-        Critical
-    }
 }
 
 <style>
@@ -395,6 +329,10 @@ else
         border-left-color: var(--color-text-secondary);
     }
 
+    .rec-card.success {
+        border-left-color: var(--color-positive);
+    }
+
     .rec-header {
         display: flex;
         align-items: center;
@@ -427,6 +365,11 @@ else
         color: var(--color-text-secondary);
     }
 
+    .rec-badge.success {
+        border-color: var(--color-positive);
+        color: var(--color-positive);
+    }
+
     .rec-severity {
         font-size: 0.75rem;
         font-weight: 500;
@@ -437,6 +380,7 @@ else
     .rec-severity.critical { color: var(--color-negative); }
     .rec-severity.warning { color: #D4A017; }
     .rec-severity.info { color: var(--color-text-secondary); }
+    .rec-severity.success { color: var(--color-positive); }
 
     .rec-message {
         font-size: 0.9375rem;
@@ -559,9 +503,102 @@ else
         margin-top: var(--space-4);
     }
 
+    .metrics-visuals {
+        margin-bottom: var(--space-6);
+    }
+
+    .metrics-visuals h3 {
+        font-family: var(--font-ui);
+        font-size: 1.25rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-4);
+        color: var(--color-text);
+    }
+
+    .visuals-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--space-4);
+    }
+
+    .visual-card {
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        padding: var(--space-5);
+    }
+
+    .visual-card h4 {
+        font-family: var(--font-ui);
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 0 var(--space-2);
+        color: var(--color-text);
+    }
+
+    .visual-desc {
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+        margin: 0 0 var(--space-4);
+        line-height: 1.4;
+    }
+
+    .bar-chart {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+
+    .bar-row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+    }
+
+    .bar-label {
+        width: 70px;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+        flex-shrink: 0;
+    }
+
+    .bar-track {
+        flex-grow: 1;
+        height: 6px;
+        background: var(--color-bg);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.5s ease-out;
+    }
+
+    .bar-fill.model1 {
+        background-color: var(--color-accent);
+    }
+
+    .bar-fill.model2 {
+        background-color: var(--color-positive);
+    }
+
+    .bar-value {
+        width: 45px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--color-text);
+        text-align: right;
+        flex-shrink: 0;
+    }
+
     @@media (max-width: 720px) {
         .quality-grid {
             grid-template-columns: repeat(2, 1fr);
+        }
+
+        .visuals-grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>

@@ -1,17 +1,21 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TrainWise.API.Contracts.Experiments;
+using TrainWise.API.Contracts.Training;
 using TrainWise.API.Data;
+using TrainWise.API.Services.ML;
 
 namespace TrainWise.API.Services.Experiments;
 
 public sealed class ExperimentService : IExperimentService
 {
     private readonly AppDbContext _dbContext;
+    private readonly IMLServiceClient _mlServiceClient;
 
-    public ExperimentService(AppDbContext dbContext)
+    public ExperimentService(AppDbContext dbContext, IMLServiceClient mlServiceClient)
     {
         _dbContext = dbContext;
+        _mlServiceClient = mlServiceClient;
     }
 
     public async Task<ExperimentDetailDto?> GetAsync(Guid experimentId, Guid userId, CancellationToken cancellationToken)
@@ -38,6 +42,31 @@ public sealed class ExperimentService : IExperimentService
             TrainingDurationSec = experiment.TrainingDurationSec,
             CreatedAt = experiment.CreatedAt
         };
+    }
+
+    public async Task<List<RecommendationDto>?> GetRecommendationsAsync(Guid experimentId, Guid userId, CancellationToken cancellationToken)
+    {
+        var experiment = await _dbContext.Experiments
+            .Include(e => e.Dataset)
+            .FirstOrDefaultAsync(e => e.ExperimentId == experimentId && e.Dataset!.UserId == userId, cancellationToken);
+
+        if (experiment is null)
+            return null;
+
+        object metrics = string.IsNullOrWhiteSpace(experiment.MetricsJson) 
+            ? new object() 
+            : JsonSerializer.Deserialize<object>(experiment.MetricsJson)!;
+
+        var config = new {
+            preprocessing = string.IsNullOrWhiteSpace(experiment.PreprocessingJson) ? new object() : JsonSerializer.Deserialize<object>(experiment.PreprocessingJson)!,
+            model = new {
+                name = experiment.ModelName,
+                hyperparameters = string.IsNullOrWhiteSpace(experiment.HyperparametersJson) ? new object() : JsonSerializer.Deserialize<object>(experiment.HyperparametersJson)!
+            },
+            crossValidation = false
+        };
+
+        return await _mlServiceClient.RecommendAsync(metrics, config, cancellationToken);
     }
 
     public async Task<ExperimentListDto> GetHistoryAsync(Guid userId, int page, int pageSize, CancellationToken cancellationToken)
@@ -90,7 +119,6 @@ public sealed class ExperimentService : IExperimentService
             using var doc = JsonDocument.Parse(metricsJson);
             var root = doc.RootElement;
 
-            // Try to find ClassificationMetrics nested object (TrainResultDto format)
             JsonElement metricsObj;
             if (root.TryGetProperty("ClassificationMetrics", out metricsObj) ||
                 root.TryGetProperty("classificationMetrics", out metricsObj))
@@ -110,7 +138,6 @@ public sealed class ExperimentService : IExperimentService
                     return string.Join(" | ", parts);
             }
 
-            // Try to find RegressionMetrics
             if (root.TryGetProperty("RegressionMetrics", out var reg) ||
                 root.TryGetProperty("regressionMetrics", out reg))
             {
@@ -129,14 +156,12 @@ public sealed class ExperimentService : IExperimentService
                     return string.Join(" | ", parts);
             }
 
-            // Fallback: try direct properties (flat ClassificationMetrics format)
             if (root.TryGetProperty("Accuracy", out var flatAcc) ||
                 root.TryGetProperty("accuracy", out flatAcc))
                 return $"Acc: {flatAcc.GetDouble():0.0%}";
         }
         catch
         {
-            // Ignore parse errors
         }
 
         return "Metrics available";

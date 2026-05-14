@@ -26,6 +26,11 @@ public sealed class ExperimentApi
         return await _apiClient.DeleteAsync($"api/experiment/{experimentId}");
     }
 
+    public async Task<List<TrainWise.Web.Models.Recommendation>?> GetRecommendationsAsync(Guid experimentId)
+    {
+        return await _apiClient.GetAsync<List<TrainWise.Web.Models.Recommendation>>($"api/experiment/{experimentId}/recommendations");
+    }
+
     /// <summary>
     /// Get training history across all datasets for the current user.
     /// GET /api/dataset/manage/training-history

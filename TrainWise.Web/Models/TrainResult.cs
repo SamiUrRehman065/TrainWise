@@ -20,6 +20,8 @@ public sealed class ClassificationMetrics
     public double F1Score { get; set; }
     public List<List<int>> ConfusionMatrix { get; set; } = new();
     public Dictionary<string, ClassificationReportEntry>? ClassificationReport { get; set; }
+    public double? TrainAccuracy { get; set; }
+    public double? TrainF1Score { get; set; }
 }
 
 public sealed class ClassificationReportEntry
@@ -35,10 +37,14 @@ public sealed class RegressionMetrics
     public double R2Score { get; set; }
     public double Rmse { get; set; }
     public double Mae { get; set; }
+    public double? TrainR2 { get; set; }
+    public double? TrainRmse { get; set; }
 }
 
 public sealed class Recommendation
 {
     public string RuleId { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string Severity { get; set; } = "info";
 }

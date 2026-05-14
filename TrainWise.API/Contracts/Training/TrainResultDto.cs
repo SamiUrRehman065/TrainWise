@@ -19,6 +19,8 @@ public sealed class ClassificationMetricsDto
     public double Recall { get; set; }
     public double F1Score { get; set; }
     public List<List<int>> ConfusionMatrix { get; set; } = new();
+    public double? TrainAccuracy { get; set; }
+    public double? TrainF1Score { get; set; }
 }
 
 public sealed class RegressionMetricsDto
@@ -26,10 +28,14 @@ public sealed class RegressionMetricsDto
     public double R2Score { get; set; }
     public double Rmse { get; set; }
     public double Mae { get; set; }
+    public double? TrainR2 { get; set; }
+    public double? TrainRmse { get; set; }
 }
 
 public sealed class RecommendationDto
 {
     public string RuleId { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string Severity { get; set; } = "info";
 }
