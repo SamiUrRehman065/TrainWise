@@ -30,8 +30,9 @@ This project demonstrates a **modular microservices app architecture**, clean se
 * Side-by-side comparison UI for experiments, with visual bar charts for feature importances
 
 ### 🌐 Web Interface
-* Built with **Blazor WebAssembly** for a fast, responsive SPA experience
-* Centralized dashboard and experiment tracking
+* Built with **Blazor WebAssembly** for a fast, responsive SPA experience.
+* **Premium UI**: Uses a custom **Deep Navy Glassmorphism** design system with smooth animations and high-contrast typography.
+* Centralized dashboard and experiment tracking with a modern "Command Center" aesthetic.
 
 ---
 
