@@ -32,6 +32,8 @@ public sealed class Experiment
 
     [Column(TypeName = "float")]
     public double? TrainingDurationSec { get; set; }
+    
+    public string? ModelPath { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

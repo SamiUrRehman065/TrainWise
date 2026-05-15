@@ -2,6 +2,9 @@
 @page "/Home"
 @inject TrainWise.Web.Services.State.SessionState SessionState
 @inject NavigationManager NavManager
+@inject TrainWise.Web.Services.Api.DatasetApi DatasetApi
+@inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
+@using TrainWise.Web.Models
 
 <PageTitle>Home — TrainWise</PageTitle>
 
@@ -44,7 +47,35 @@
         </div>
     </section>
 
-    <!-- SECTION 2: HOW IT WORKS -->
+    <!-- SECTION 2: QUICK STATS (DYNAMIC) -->
+    @if (SessionState.IsAuthenticated)
+    {
+        <section class="stats-section animate-fade-up">
+            <div class="tw-section-header">
+                <h2>Your Workspace at a Glance</h2>
+            </div>
+            <div class="stats-grid">
+                <div class="tw-stat-card">
+                    <span class="stat-number">@(_stats?.TotalDatasets ?? 0)</span>
+                    <span class="stat-label">Total Datasets</span>
+                </div>
+                <div class="tw-stat-card">
+                    <span class="stat-number">@(_stats?.TotalExperiments ?? 0)</span>
+                    <span class="stat-label">Experiments Run</span>
+                </div>
+                <div class="tw-stat-card">
+                    <span class="stat-number">@((_stats?.BestAccuracy ?? 0).ToString("P1"))</span>
+                    <span class="stat-label">Best Accuracy</span>
+                </div>
+                <div class="tw-stat-card">
+                    <span class="stat-number">@(_stats?.ModelsTried ?? 0)</span>
+                    <span class="stat-label">Models Tried</span>
+                </div>
+            </div>
+        </section>
+    }
+
+    <!-- SECTION 3: HOW IT WORKS -->
     <section class="how-it-works">
         <div class="tw-section-header">
             <h2>From Raw Data to Results in 3 Steps</h2>
@@ -55,56 +86,28 @@
                 <div class="step-badge">1</div>
                 <div class="step-icon">📁</div>
                 <h3>Upload Your Dataset</h3>
-                <p>Support for CSV and XLSX files up to 50MB. TrainWise automatically detects column types, checks for duplicates using SHA-256 hashing, and gives you an instant data summary including shape, nulls, and column statistics.</p>
+                <p>Support for CSV and XLSX files. TrainWise automatically detects column types and gives you an instant data summary including shape, nulls, and column statistics.</p>
             </div>
             <div class="tw-card step-card" style="animation-delay: 0.2s;">
                 <div class="step-badge">2</div>
                 <div class="step-icon">⚙️</div>
                 <h3>Configure & Train</h3>
-                <p>Choose from 10+ classification and regression models. Set preprocessing options — handle nulls, encode categoricals, scale features, or apply SMOTE for imbalanced classes. Training completes in under 90 seconds.</p>
+                <p>Choose from 12+ classification and regression models. Set preprocessing options — handle nulls, encode categoricals, scale features, or apply SMOTE.</p>
             </div>
             <div class="tw-card step-card" style="animation-delay: 0.3s;">
                 <div class="step-badge">3</div>
                 <div class="step-icon">📊</div>
                 <h3>Visualize & Improve</h3>
-                <p>Get interactive charts: Confusion Matrix, ROC Curve, Precision-Recall, and Feature Importance. Our rule-based recommendation engine (8 rules) suggests what to fix and why — then retrain with one click.</p>
+                <p>Get interactive charts: Confusion Matrix, ROC Curve, and Feature Importance. Our advanced recommendation engine suggests specific technical improvements.</p>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 3: QUICK STATS -->
-    @if (SessionState.IsAuthenticated)
-    {
-        <section class="stats-section">
-            <div class="tw-section-header">
-                <h2>Your Workspace at a Glance</h2>
-            </div>
-            <div class="stats-grid">
-                <div class="tw-stat-card">
-                    <span class="stat-number">12</span>
-                    <span class="stat-label">Total Datasets</span>
-                </div>
-                <div class="tw-stat-card">
-                    <span class="stat-number">48</span>
-                    <span class="stat-label">Experiments Run</span>
-                </div>
-                <div class="tw-stat-card">
-                    <span class="stat-number">94.2%</span>
-                    <span class="stat-label">Best Accuracy</span>
-                </div>
-                <div class="tw-stat-card">
-                    <span class="stat-number">8</span>
-                    <span class="stat-label">Models Tried</span>
-                </div>
-            </div>
-        </section>
-    }
-
     <!-- SECTION 4: MODELS SHOWCASE -->
     <section class="models-section">
         <div class="tw-section-header">
-            <h2>10+ Models Ready to Train</h2>
-            <p class="subtitle">Classification and regression models, no setup required.</p>
+            <h2>12+ Pro Models Ready to Train</h2>
+            <p class="subtitle">State-of-the-art algorithms optimized for your data type.</p>
         </div>
         <div class="models-container">
             <div class="model-group">
@@ -127,10 +130,11 @@
                     <span class="tw-badge info">Ridge</span>
                     <span class="tw-badge info">Lasso</span>
                     <span class="tw-badge info">Random Forest Regressor</span>
+                    <span class="tw-badge info">Decision Tree Regressor</span>
+                    <span class="tw-badge info">Gradient Boosting Regressor</span>
                     <span class="tw-badge info">SVR</span>
                 </div>
             </div>
-            <p class="models-note">Model selection guidance is provided automatically based on your dataset's target variable type.</p>
         </div>
     </section>
 
@@ -142,55 +146,84 @@
         <div class="tw-card table-card">
             @if (SessionState.IsAuthenticated)
             {
-                <table class="recent-table">
-                    <thead>
-                        <tr>
-                            <th>Dataset</th>
-                            <th>Model</th>
-                            <th>Accuracy</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>credit_risk.csv</td>
-                            <td>Random Forest</td>
-                            <td><code class="hp-mono">0.892</code></td>
-                            <td><span class="tw-badge success">Completed</span></td>
-                            <td>2 mins ago</td>
-                        </tr>
-                        <tr>
-                            <td>customer_churn.xlsx</td>
-                            <td>Logistic Regression</td>
-                            <td><code class="hp-mono">0.764</code></td>
-                            <td><span class="tw-badge success">Completed</span></td>
-                            <td>1 hour ago</td>
-                        </tr>
-                        <tr>
-                            <td>housing_prices.csv</td>
-                            <td>XGBoost</td>
-                            <td><code class="hp-mono">0.912</code></td>
-                            <td><span class="tw-badge success">Completed</span></td>
-                            <td>Yesterday</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="table-footer">
-                    <a href="/experiments" class="view-all-link">View all experiments →</a>
-                </div>
+                @if (_recentExperiments?.Any() == true)
+                {
+                    <table class="recent-table">
+                        <thead>
+                            <tr>
+                                <th>Dataset</th>
+                                <th>Model</th>
+                                <th>Task</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var exp in _recentExperiments.Take(5))
+                            {
+                                <tr>
+                                    <td>@exp.DatasetName</td>
+                                    <td><span class="tw-badge info">@exp.ModelName</span></td>
+                                    <td class="tw-mono">@exp.TaskType</td>
+                                    <td>@exp.CreatedAt.ToShortDateString()</td>
+                                    <td>
+                                        <button class="tw-btn-ghost sm" @onclick='() => NavManager.NavigateTo($"/experiments/{exp.ExperimentId}")'>View Details</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <div class="table-footer">
+                        <a href="/experiments" class="view-all-link">View full history →</a>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <p>No experiments yet. Upload a dataset to get started.</p>
+                        <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/datasets")'>Start Training</button>
+                    </div>
+                }
             }
             else
             {
                 <div class="empty-state">
-                    <div class="empty-icon">📊</div>
-                    <p>No experiments yet. Upload a dataset to get started.</p>
-                    <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/datasets")'>Start Training</button>
+                    <div class="empty-icon">🔒</div>
+                    <p>Please login to see your workspace statistics.</p>
+                    <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/login")'>Login Now</button>
                 </div>
             }
         </div>
     </section>
 </div>
+
+@code {
+    private DashboardStats? _stats;
+    private List<TrainingHistoryItem>? _recentExperiments;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (SessionState.IsAuthenticated)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _stats = await DatasetApi.GetStatsAsync();
+            var history = await ExperimentApi.GetTrainingHistoryAsync();
+            _recentExperiments = history?.TrainingHistory;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+    }
+}
 
 <style>
     .home-container {

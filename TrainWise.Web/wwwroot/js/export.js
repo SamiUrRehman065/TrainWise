@@ -12,6 +12,19 @@ window.downloadFile = function (data, filename) {
     URL.revokeObjectURL(url);
 };
 
+window.downloadBinaryFile = function (data, filename, contentType) {
+    const bytes = new Uint8Array(data);
+    const blob = new Blob([bytes], { type: contentType || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
 // Copy to clipboard utility
 window.copyToClipboard = function (text) {
     navigator.clipboard.writeText(text).then(() => {

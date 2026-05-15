@@ -40,8 +40,14 @@ public sealed class ExperimentService : IExperimentService
             HyperparametersJson = experiment.HyperparametersJson,
             MetricsJson = experiment.MetricsJson,
             TrainingDurationSec = experiment.TrainingDurationSec,
+            ModelPath = experiment.ModelPath,
             CreatedAt = experiment.CreatedAt
         };
+    }
+
+    public async Task<Stream?> DownloadModelAsync(string modelPath, CancellationToken cancellationToken)
+    {
+        return await _mlServiceClient.DownloadModelAsync(modelPath, cancellationToken);
     }
 
     public async Task<List<RecommendationDto>?> GetRecommendationsAsync(Guid experimentId, Guid userId, CancellationToken cancellationToken)

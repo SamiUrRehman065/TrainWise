@@ -39,4 +39,9 @@ public sealed class ExperimentApi
     {
         return await _apiClient.GetAsync<TrainingHistoryResponse>("api/dataset/manage/training-history");
     }
+
+    public async Task<byte[]?> GetModelFileAsync(Guid experimentId)
+    {
+        return await _apiClient.GetByteArrayAsync($"api/experiment/{experimentId}/download");
+    }
 }

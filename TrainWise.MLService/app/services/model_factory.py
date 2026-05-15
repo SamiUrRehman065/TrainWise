@@ -1,8 +1,10 @@
 from typing import Callable, Dict, Any
-from sklearn.linear_model import LogisticRegression, LinearRegression
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor, AdaBoostClassifier, AdaBoostRegressor
 from sklearn.svm import SVC, SVR
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.naive_bayes import GaussianNB
 
 class ModelFactory:
     @classmethod
@@ -12,16 +14,24 @@ class ModelFactory:
             model_cls = RandomForestClassifier if task_type == "classification" else RandomForestRegressor
         elif name == "SVM":
             model_cls = SVC if task_type == "classification" else SVR
-            # Ensure SVM has probability=True for ROC/PR curves
             if task_type == "classification" and "probability" not in hyperparameters:
                 hyperparameters["probability"] = True
         elif name == "LogisticRegression":
-            if task_type == "regression":
-                model_cls = LinearRegression
-            else:
-                model_cls = LogisticRegression
+            model_cls = LogisticRegression if task_type == "classification" else LinearRegression
         elif name == "KNN":
-            model_cls = KNeighborsClassifier # Add Regressor if needed
+            model_cls = KNeighborsClassifier if task_type == "classification" else KNeighborsRegressor
+        elif name == "DecisionTree":
+            model_cls = DecisionTreeClassifier if task_type == "classification" else DecisionTreeRegressor
+        elif name == "GradientBoosting":
+            model_cls = GradientBoostingClassifier if task_type == "classification" else GradientBoostingRegressor
+        elif name == "AdaBoost":
+            model_cls = AdaBoostClassifier if task_type == "classification" else AdaBoostRegressor
+        elif name == "NaiveBayes":
+            model_cls = GaussianNB # Regression doesn't apply to NB typically
+        elif name == "Ridge":
+            model_cls = Ridge
+        elif name == "Lasso":
+            model_cls = Lasso
         elif name == "LinearRegression":
             model_cls = LinearRegression
         elif name == "RandomForestRegressor":
@@ -31,7 +41,7 @@ class ModelFactory:
         else:
             raise ValueError(f"Unsupported model: {name}")
             
-        # Filter hyperparameters to only those supported by the model class
+        # Filter hyperparameters
         import inspect
         sig = inspect.signature(model_cls)
         valid_params = {

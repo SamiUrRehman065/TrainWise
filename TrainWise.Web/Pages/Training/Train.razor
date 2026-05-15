@@ -72,19 +72,96 @@
                                     @if (_request.TaskType == "classification")
                                     {
                                         <option value="LogisticRegression">Logistic Regression</option>
-                                        <option value="RandomForest">Random Forest Classifier</option>
-                                        <option value="SVM">SVM</option>
-                                        <option value="KNN">KNN</option>
+                                        <option value="RandomForest">Random Forest</option>
+                                        <option value="SVM">SVM (Support Vector Machine)</option>
+                                        <option value="KNN">KNN (K-Nearest Neighbors)</option>
+                                        <option value="DecisionTree">Decision Tree</option>
+                                        <option value="GradientBoosting">Gradient Boosting</option>
+                                        <option value="AdaBoost">AdaBoost</option>
+                                        <option value="NaiveBayes">Naive Bayes</option>
                                     }
                                     else if (_request.TaskType == "regression")
                                     {
                                         <option value="LinearRegression">Linear Regression</option>
+                                        <option value="Ridge">Ridge Regression</option>
+                                        <option value="Lasso">Lasso Regression</option>
                                         <option value="RandomForestRegressor">Random Forest Regressor</option>
-                                        <option value="SVR">SVR</option>
+                                        <option value="DecisionTree">Decision Tree Regressor</option>
+                                        <option value="GradientBoosting">Gradient Boosting Regressor</option>
+                                        <option value="SVR">SVR (Support Vector Regressor)</option>
                                     }
                                 </select>
                             </div>
                         </div>
+
+                        <!-- DYNAMIC HYPERPARAMETERS -->
+                        @if (!string.IsNullOrEmpty(_request.Model.Name))
+                        {
+                            <div class="hyperparams-grid animate-fade-up">
+                                @if (_request.Model.Name.Contains("RandomForest") || _request.Model.Name.Contains("GradientBoosting") || _request.Model.Name.Contains("AdaBoost"))
+                                {
+                                    <div class="form-group">
+                                        <label>N Estimators (Trees)</label>
+                                        <input type="number" class="tw-input" @bind="_request.Model.Hyperparameters.NEstimators" placeholder="Default: 100" />
+                                    </div>
+                                }
+                                @if (_request.Model.Name.Contains("RandomForest") || _request.Model.Name.Contains("DecisionTree") || _request.Model.Name.Contains("Boosting"))
+                                {
+                                    <div class="form-group">
+                                        <label>Max Depth</label>
+                                        <input type="number" class="tw-input" @bind="_request.Model.Hyperparameters.MaxDepth" placeholder="Default: None" />
+                                    </div>
+                                }
+                                @if (_request.Model.Name == "SVM" || _request.Model.Name == "SVR" || _request.Model.Name == "LogisticRegression")
+                                {
+                                    <div class="form-group">
+                                        <label>C (Regularization)</label>
+                                        <input type="number" step="0.1" class="tw-input" @bind="_request.Model.Hyperparameters.C" placeholder="Default: 1.0" />
+                                    </div>
+                                }
+                                @if (_request.Model.Name == "SVM" || _request.Model.Name == "SVR")
+                                {
+                                    <div class="form-group">
+                                        <label>Kernel</label>
+                                        <select class="tw-input" @bind="_request.Model.Hyperparameters.Kernel">
+                                            <option value="rbf">RBF</option>
+                                            <option value="linear">Linear</option>
+                                            <option value="poly">Polynomial</option>
+                                        </select>
+                                    </div>
+                                }
+                                @if (_request.Model.Name == "KNN")
+                                {
+                                    <div class="form-group">
+                                        <label>K Neighbors</label>
+                                        <input type="number" class="tw-input" @bind="_request.Model.Hyperparameters.NNeighbors" placeholder="Default: 5" />
+                                    </div>
+                                }
+                                @if (_request.Model.Name == "Ridge" || _request.Model.Name == "Lasso")
+                                {
+                                    <div class="form-group">
+                                        <label>Alpha (Regularization)</label>
+                                        <input type="number" step="0.01" class="tw-input" @bind="_request.Model.Hyperparameters.Alpha" placeholder="Default: 1.0" />
+                                    </div>
+                                }
+
+                                <!-- CUSTOM HYPERPARAMETERS -->
+                                <div class="custom-params-section">
+                                    <label class="section-label">Advanced Parameters</label>
+                                    @foreach (var param in _request.Model.Hyperparameters.AdditionalParams.ToList())
+                                    {
+                                        <div class="custom-param-row animate-fade-up">
+                                            <input type="text" class="tw-input sm" placeholder="Param Name" 
+                                                   value="@param.Key" @onchange='(e) => UpdateParamKey(param.Key, e.Value?.ToString())' />
+                                            <input type="text" class="tw-input sm" placeholder="Value" 
+                                                   value="@param.Value" @onchange='(e) => UpdateParamValue(param.Key, e.Value)' />
+                                            <button class="tw-btn-ghost sm text-danger" @onclick="() => RemoveParam(param.Key)">✕</button>
+                                        </div>
+                                    }
+                                    <button class="tw-btn-ghost sm" @onclick="AddParam" style="margin-top: 8px;">+ Add Parameter</button>
+                                </div>
+                            </div>
+                        }
 
                         <div class="form-group">
                             <label>Target Column (Variable to Predict)</label>
@@ -130,7 +207,7 @@
                             </div>
                         </div>
 
-                        <div class="form-row">
+                        <div class="form-row thirds">
                             <div class="form-group">
                                 <label>Train/Test Split</label>
                                 <select class="tw-input" @bind="_request.TrainTestSplit">
@@ -140,12 +217,19 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Cross-Validation</label>
-                                <select class="tw-input" @bind="_request.CrossValidation">
-                                    <option value="false">Disabled</option>
-                                    <option value="true">5-Fold CV</option>
+                                <label>Validation Method</label>
+                                <select class="tw-input" @onchange='(e) => { _request.CrossValidation = e.Value?.ToString() == "cv"; }'>
+                                    <option value="split">Hold-out Split</option>
+                                    <option value="cv">K-Fold Cross-Validation</option>
                                 </select>
                             </div>
+                            @if (_request.CrossValidation)
+                            {
+                                <div class="form-group">
+                                    <label>Number of Folds</label>
+                                    <input type="number" class="tw-input" @bind="_request.KFolds" min="2" max="10" />
+                                </div>
+                            }
                         </div>
 
                         <div class="form-group checkbox-container">
@@ -321,7 +405,7 @@
                     _messageType = "info";
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Fallback to basic summary if intelligence fails
                 var summary = await DatasetApi.GetSummaryAsync(datasetId);
@@ -372,6 +456,34 @@
         }
 
         _isLoading = false;
+    }
+
+    private void AddParam()
+    {
+        var key = $"param_{_request.Model.Hyperparameters.AdditionalParams.Count + 1}";
+        _request.Model.Hyperparameters.AdditionalParams[key] = "";
+        StateHasChanged();
+    }
+
+    private void RemoveParam(string key)
+    {
+        _request.Model.Hyperparameters.AdditionalParams.Remove(key);
+        StateHasChanged();
+    }
+
+    private void UpdateParamKey(string oldKey, string? newKey)
+    {
+        if (string.IsNullOrWhiteSpace(newKey) || _request.Model.Hyperparameters.AdditionalParams.ContainsKey(newKey)) return;
+        
+        var val = _request.Model.Hyperparameters.AdditionalParams[oldKey];
+        _request.Model.Hyperparameters.AdditionalParams.Remove(oldKey);
+        _request.Model.Hyperparameters.AdditionalParams[newKey] = val;
+    }
+
+    private void UpdateParamValue(string key, object? value)
+    {
+        if (value == null) return;
+        _request.Model.Hyperparameters.AdditionalParams[key] = value;
     }
 
     private string FormatBytes(long bytes)
@@ -438,6 +550,46 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 20px;
+    }
+
+    .hyperparams-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 24px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-subtle);
+        border-radius: 12px;
+        margin: 20px 0;
+    }
+
+    .custom-params-section {
+        grid-column: 1 / -1;
+        border-top: 1px solid var(--border-subtle);
+        padding-top: 20px;
+        margin-top: 10px;
+    }
+
+    .section-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 16px;
+        letter-spacing: 1px;
+    }
+
+    .custom-param-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 40px;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .tw-input.sm {
+        padding: 8px 12px;
+        font-size: 0.85rem;
     }
 
     .form-row.thirds {

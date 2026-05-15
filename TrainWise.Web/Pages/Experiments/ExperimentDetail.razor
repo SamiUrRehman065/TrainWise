@@ -32,6 +32,20 @@
             <div class="header-actions">
                 <button class="tw-btn-ghost" @onclick="ExportAsync">📤 Export JSON</button>
                 <button class="tw-btn-primary" @onclick='() => NavManager.NavigateTo("/experiments/compare")'>⚖️ Compare Run</button>
+                
+                @if (!string.IsNullOrEmpty(_experiment.ModelPath))
+                {
+                    <button class="tw-btn-primary" style="background: var(--tw-success);" @onclick="DownloadModelAsync" disabled="@_isDownloading">
+                        @if (_isDownloading)
+                        {
+                            <span class="loading-spinner sm"></span>
+                        }
+                        else
+                        {
+                            <span>💾 Download .joblib</span>
+                        }
+                    </button>
+                }
             </div>
         </section>
 
@@ -454,6 +468,35 @@
             };
         }
         return value?.ToString() ?? "Default";
+    }
+
+    private bool _isDownloading;
+
+    private async Task DownloadModelAsync()
+    {
+        if (_experiment is null || _isDownloading) return;
+        
+        _isDownloading = true;
+        try
+        {
+            if (Guid.TryParse(Id, out var experimentId))
+            {
+                var bytes = await ExperimentApi.GetModelFileAsync(experimentId);
+                if (bytes != null && bytes.Length > 0)
+                {
+                    var filename = $"model_{_experiment.ModelName.ToLower()}_{experimentId.ToString()[..8]}.joblib";
+                    await JSRuntime.InvokeVoidAsync("downloadBinaryFile", bytes, filename, "application/octet-stream");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error downloading model file");
+        }
+        finally
+        {
+            _isDownloading = false;
+        }
     }
 
     private async Task ExportAsync()

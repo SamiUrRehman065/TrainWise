@@ -12,6 +12,7 @@ public sealed class ExperimentDetail
     public string? HyperparametersJson { get; set; }
     public string MetricsJson { get; set; } = string.Empty;
     public double? TrainingDurationSec { get; set; }
+    public string? ModelPath { get; set; }
     public DateTime CreatedAt { get; set; }
 
     /// <summary>

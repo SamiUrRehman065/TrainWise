@@ -13,6 +13,6 @@ public sealed class TrainingApi
 
     public async Task<TrainResult?> TrainAsync(TrainRequest request)
     {
-        return await _apiClient.PostAsync<TrainResult>("api/train", request);
+        return await _apiClient.PostAsync<TrainResult, TrainRequest>("api/train", request);
     }
 }

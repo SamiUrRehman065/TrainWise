@@ -95,7 +95,7 @@ def train_model(request: TrainRequest) -> TrainResult:
             class_counts = y.value_counts()
             min_samples = class_counts.min()
             
-        n_folds = min(5, len(x_df), min_samples)
+        n_folds = min(request.kFolds, len(x_df), min_samples)
         
         if n_folds > 1:
             try:
@@ -207,6 +207,20 @@ def train_model(request: TrainRequest) -> TrainResult:
     analysis_payload = analysis.model_dump()
     result.recommendations = engine.evaluate_all(metrics_payload, config_payload, analysis_payload)
     
+    # Persist Model
+    import joblib
+    import os
+    models_dir = os.path.join(os.getcwd(), "models_store")
+    os.makedirs(models_dir, exist_ok=True)
+    
+    # Unique name based on dataset and timestamp to avoid collisions
+    model_filename = f"model_{request.datasetId}_{int(time.time())}.joblib"
+    model_path = os.path.join(models_dir, model_filename)
+    joblib.dump(model, model_path)
+    
+    # Store path in result for later retrieval
+    result.modelPath = model_path
+    
     return result
 
 
@@ -297,8 +311,15 @@ def _build_hyperparameters(request: TrainRequest) -> Dict[str, Any]:
         "kernel": hyper.kernel,
         "n_neighbors": hyper.n_neighbors,
         "max_iter": hyper.max_iter,
+        "alpha": hyper.alpha,
+        "max_depth": hyper.max_depth,
     }
-    return {key: value for key, value in params.items() if value is not None}
+    params = {key: value for key, value in params.items() if value is not None}
+    
+    if hyper.additionalParams:
+        params.update(hyper.additionalParams)
+        
+    return params
 
 
 def _extract_feature_importances(model: Any, columns: list[str]) -> Dict[str, float] | None:

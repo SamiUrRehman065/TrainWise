@@ -17,39 +17,77 @@ class ChartBuilder:
         y_true = np.array(y_true)
         y_probs = np.array(y_probs)
         
-        # Binary classification only for ROC
-        if len(np.unique(y_true)) != 2 or y_probs.shape[1] < 2:
-            return None
-            
-        probs = y_probs[:, 1]
-        fpr, tpr, _ = roc_curve(y_true, probs)
-        roc_auc = auc(fpr, tpr)
+        # Binarize labels for multi-class support
+        classes = np.unique(y_true)
+        n_classes = len(classes)
         
-        return {
-            "Fpr": fpr.tolist(),
-            "Tpr": tpr.tolist(),
-            "Auc": round(float(roc_auc), 4),
-            "Baseline": [0, 1]
-        }
+        if n_classes == 2:
+            # Binary case
+            probs = y_probs[:, 1] if y_probs.shape[1] > 1 else y_probs[:, 0]
+            fpr, tpr, _ = roc_curve(y_true, probs, pos_label=classes[1])
+            roc_auc = auc(fpr, tpr)
+            return {
+                "Fpr": fpr.tolist(),
+                "Tpr": tpr.tolist(),
+                "Auc": round(float(roc_auc), 4),
+                "Baseline": [0, 1]
+            }
+        else:
+            # Multi-class OvR (Macro-average logic or showing mean)
+            # For simplicity in UI, we'll return the Macro-average ROC
+            all_fpr = np.unique(np.concatenate([roc_curve((y_true == c).astype(int), y_probs[:, i])[0] for i, c in enumerate(classes)]))
+            mean_tpr = np.zeros_like(all_fpr)
+            for i, c in enumerate(classes):
+                fpr, tpr, _ = roc_curve((y_true == c).astype(int), y_probs[:, i])
+                mean_tpr += np.interp(all_fpr, fpr, tpr)
+            mean_tpr /= n_classes
+            roc_auc = auc(all_fpr, mean_tpr)
+            
+            return {
+                "Fpr": all_fpr.tolist(),
+                "Tpr": mean_tpr.tolist(),
+                "Auc": round(float(roc_auc), 4),
+                "Baseline": [0, 1],
+                "IsMultiClass": True
+            }
 
     @staticmethod
     def build_precision_recall_curve(y_true, y_probs):
         y_true = np.array(y_true)
         y_probs = np.array(y_probs)
+        classes = np.unique(y_true)
         
-        # Binary classification only for PR Curve
-        if len(np.unique(y_true)) != 2 or y_probs.shape[1] < 2:
-            return None
+        if len(classes) == 2:
+            probs = y_probs[:, 1] if y_probs.shape[1] > 1 else y_probs[:, 0]
+            precision, recall, _ = precision_recall_curve(y_true, probs, pos_label=classes[1])
+            avg_precision = average_precision_score((y_true == classes[1]).astype(int), probs)
+            return {
+                "Precision": precision.tolist(),
+                "Recall": recall.tolist(),
+                "AvgPrecision": round(float(avg_precision), 4)
+            }
+        else:
+            # Multi-class Macro-average PR
+            # Calculate average precision across all classes
+            total_ap = 0
+            for i, c in enumerate(classes):
+                total_ap += average_precision_score((y_true == c).astype(int), y_probs[:, i])
+            avg_precision = total_ap / len(classes)
             
-        probs = y_probs[:, 1]
-        precision, recall, _ = precision_recall_curve(y_true, probs)
-        avg_precision = average_precision_score(y_true, probs)
-        
-        return {
-            "Precision": precision.tolist(),
-            "Recall": recall.tolist(),
-            "AvgPrecision": round(float(avg_precision), 4)
-        }
+            # For the curve, we'll interpolate a mean curve
+            all_recall = np.linspace(0, 1, 100)
+            mean_precision = np.zeros_like(all_recall)
+            for i, c in enumerate(classes):
+                p, r, _ = precision_recall_curve((y_true == c).astype(int), y_probs[:, i])
+                mean_precision += np.interp(all_recall, r[::-1], p[::-1])
+            mean_precision /= len(classes)
+            
+            return {
+                "Precision": mean_precision.tolist(),
+                "Recall": all_recall.tolist(),
+                "AvgPrecision": round(float(avg_precision), 4),
+                "IsMultiClass": True
+            }
 
     @staticmethod
     def build_feature_importance(model, feature_names):

@@ -58,7 +58,7 @@ public sealed class DatasetApi
     /// </summary>
     public async Task<bool> ArchiveAsync(int daysOld = 30)
     {
-        var result = await _apiClient.PostAsync<object>($"api/dataset/manage/archive?daysOld={daysOld}", new { });
+        var result = await _apiClient.PostAsync<object, object>($"api/dataset/manage/archive?daysOld={daysOld}", new { });
         return result is not null;
     }
 

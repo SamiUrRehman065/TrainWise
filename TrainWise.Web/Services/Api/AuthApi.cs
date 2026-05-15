@@ -21,7 +21,7 @@ public sealed class AuthApi
 
     public async Task<bool> LoginAsync(string username, string password)
     {
-        var response = await _apiClient.PostAsync<LoginResponse>("api/auth/login", new LoginRequest
+        var response = await _apiClient.PostAsync<LoginResponse, LoginRequest>("api/auth/login", new LoginRequest
         {
             Username = username,
             Password = password
@@ -48,7 +48,7 @@ public sealed class AuthApi
 
     public async Task<bool> SignupAsync(string username, string password)
     {
-        var response = await _apiClient.PostAsync<LoginResponse>("api/auth/signup", new SignupRequest
+        var response = await _apiClient.PostAsync<LoginResponse, SignupRequest>("api/auth/signup", new SignupRequest
         {
             Username = username,
             Password = password

@@ -9,6 +9,7 @@ public sealed class TrainRequest
     public ModelConfig Model { get; set; } = new();
     public double TrainTestSplit { get; set; } = 0.8;
     public bool CrossValidation { get; set; }
+    public int KFolds { get; set; } = 5;
     /// <summary>Set by TrainingService from the database — not sent by the frontend.</summary>
     public string? FilePath { get; set; }
 }
@@ -35,4 +36,6 @@ public sealed class ModelHyperparameters
     public string? Kernel { get; set; }
     public int? NNeighbors { get; set; }
     public int? MaxIter { get; set; }
+    public double? Alpha { get; set; }
+    public int? MaxDepth { get; set; }
 }

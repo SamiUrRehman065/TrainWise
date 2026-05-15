@@ -28,8 +28,42 @@ class RecommendationEngine:
         
         # 4. Configuration Optimization
         recommendations.extend(self._evaluate_config(config))
+
+        # 5. Visualization Insights
+        recommendations.extend(self._evaluate_visualizations(metrics, config, analysis))
         
         return recommendations
+
+    def _evaluate_visualizations(self, metrics: Dict[str, Any], config: Dict[str, Any], analysis: Dict[str, Any]) -> List[Recommendation]:
+        recs = []
+        task_type = config.get("taskType", "classification")
+        target_analysis = analysis.get("targetAnalysis", {})
+        classes = target_analysis.get("uniqueValuesCount", 0)
+        
+        if task_type == "regression":
+            recs.append(Recommendation(
+                ruleId="VI-01",
+                severity="info",
+                message="Regression Insights Active.",
+                action="For regression tasks, ROC/PR curves are replaced by Residuals and Actual-vs-Predicted plots to better visualize prediction error."
+            ))
+        elif task_type == "classification":
+            if classes > 2:
+                recs.append(Recommendation(
+                    ruleId="VI-02",
+                    severity="info",
+                    message="Multi-Class Visualization Active.",
+                    action=f"Your dataset has {classes} classes. ROC and PR curves are calculated using 'Macro-average' logic to represent overall model health."
+                ))
+            else:
+                recs.append(Recommendation(
+                    ruleId="VI-03",
+                    severity="success",
+                    message="Binary Visualization Active.",
+                    action="Standard ROC/PR curves generated for precise performance auditing of your binary target."
+                ))
+                
+        return recs
 
     def _evaluate_data_quality(self, metrics: Dict[str, Any], config: Dict[str, Any], analysis: Dict[str, Any]) -> List[Recommendation]:
         recs = []

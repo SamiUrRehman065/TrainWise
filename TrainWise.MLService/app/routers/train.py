@@ -1,5 +1,7 @@
 from typing import Any
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
+import os
 from pydantic import BaseModel
 from app.models.dataset_summary import DatasetSummary
 from app.models.train_request import TrainRequest
@@ -82,3 +84,17 @@ async def intelligence(request: EdaRequest) -> DatasetIntelligence:
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(ex))
+
+@router.get("/download")
+async def download_model(path: str):
+    """
+    Download a trained model file.
+    """
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Model file not found")
+    
+    return FileResponse(
+        path, 
+        media_type="application/octet-stream", 
+        filename=os.path.basename(path)
+    )

@@ -17,5 +17,6 @@ builder.Services.AddScoped<AuthApi>();
 builder.Services.AddScoped<DatasetApi>();
 builder.Services.AddScoped<TrainingApi>();
 builder.Services.AddScoped<ExperimentApi>();
+builder.Services.AddScoped<UserApi>();
 
 await builder.Build().RunAsync();

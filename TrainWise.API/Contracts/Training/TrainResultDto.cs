@@ -11,6 +11,7 @@ public sealed class TrainResultDto
     public double TrainingDurationSeconds { get; set; }
     public List<RecommendationDto> Recommendations { get; set; } = new();
     public object? Charts { get; set; }
+    public string? ModelPath { get; set; }
 }
 
 public sealed class ClassificationMetricsDto

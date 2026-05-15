@@ -64,6 +64,17 @@ public sealed class MLServiceClient : IMLServiceClient
         return await response.Content.ReadFromJsonAsync<List<RecommendationDto>>(cancellationToken: cancellationToken);
     }
 
+    public async Task<Stream?> DownloadModelAsync(string path, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.GetAsync($"/download?path={Uri.EscapeDataString(path)}", cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadAsStreamAsync(cancellationToken);
+    }
+
     public async Task<bool> HealthAsync(CancellationToken cancellationToken)
     {
         var response = await _httpClient.GetAsync("/health", cancellationToken);

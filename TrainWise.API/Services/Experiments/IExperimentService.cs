@@ -9,4 +9,5 @@ public interface IExperimentService
     Task<ExperimentListDto> GetHistoryAsync(Guid userId, int page, int pageSize, CancellationToken cancellationToken);
     Task<bool> DeleteAsync(Guid experimentId, Guid userId, CancellationToken cancellationToken);
     Task<List<RecommendationDto>?> GetRecommendationsAsync(Guid experimentId, Guid userId, CancellationToken cancellationToken);
+    Task<Stream?> DownloadModelAsync(string modelPath, CancellationToken cancellationToken);
 }

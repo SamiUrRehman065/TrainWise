@@ -80,7 +80,7 @@ public sealed class ApiClient
         }
     }
 
-    public async Task<T?> PostAsync<T>(string path, object body) where T : class
+    public async Task<T?> PostAsync<T, TRequest>(string path, TRequest body) where T : class
     {
         try
         {
@@ -161,6 +161,66 @@ public sealed class ApiClient
         {
             _logger.LogError(ex, "Error calling DELETE {Path}", path);
             return false;
+        }
+    }
+
+    public async Task<byte[]?> GetByteArrayAsync(string path)
+    {
+        try
+        {
+            ApplySessionHeader();
+            var response = await _http.GetAsync(path);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                await ClearInvalidSessionAsync("GET (bytes)", path);
+                return null;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadAsByteArrayAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling GET (bytes) {Path}", path);
+            return null;
+        }
+    }
+
+    public async Task<T?> PutAsync<T, TRequest>(string path, TRequest body) where T : class
+    {
+        try
+        {
+            ApplySessionHeader();
+            var json = JsonSerializer.Serialize(body);
+            var content = new StringContent(json, Encoding.UTF8);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            var response = await _http.PutAsync(path, content);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                await ClearInvalidSessionAsync("PUT", path);
+                return null;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("API error: {StatusCode} - PUT {Path}", response.StatusCode, path);
+                return null;
+            }
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return string.IsNullOrEmpty(responseJson) ? null : JsonSerializer.Deserialize<T>(responseJson, _jsonOptions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling PUT {Path}", path);
+            return null;
         }
     }
 }

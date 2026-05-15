@@ -6,6 +6,7 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavManager
 @using TrainWise.Web.Components.Common
+@using ExperimentModel = TrainWise.Web.Models.ExperimentDetail
 
 <div class="compare-page">
     <section class="tw-section-header animate-fade-up">
@@ -17,14 +18,27 @@
             <div class="tw-card selector-card">
                 <div class="selectors-grid">
                     <div class="selector-item">
+                        <label>Filter by Dataset</label>
+                        <select class="tw-input" @bind="_selectedDatasetId" @bind:after="OnDatasetFilterChanged">
+                            <option value="">-- All Datasets --</option>
+                            @if (_experiments?.Any() == true)
+                            {
+                                @foreach (var ds in _experiments.Select(e => new { e.DatasetId, e.DatasetName }).DistinctBy(x => x.DatasetId))
+                                {
+                                    <option value="@ds.DatasetId">@ds.DatasetName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="selector-item">
                         <label>Baseline Run (Experiment 1)</label>
                         <select class="tw-input" @bind="_exp1Id" @bind:after="OnExperimentSelected">
                             <option value="">-- Select baseline --</option>
                             @if (_experiments?.Any() == true)
                             {
-                                @foreach (var exp in _experiments)
+                                @foreach (var exp in _experiments.Where(e => string.IsNullOrEmpty(_selectedDatasetId) || e.DatasetId.ToString() == _selectedDatasetId))
                                 {
-                                    <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType)</option>
+                                    <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType) - @exp.CreatedAt.ToShortDateString()</option>
                                 }
                             }
                         </select>
@@ -42,12 +56,10 @@
                                 }
                             }
                         </select>
-                        @if (string.IsNullOrEmpty(_exp1Id))
-                        {
-                            <span class="tw-info-text">Select a baseline first</span>
-                        }
                     </div>
-                    <button class="tw-btn-primary" @onclick="CompareAsync" disabled="@(string.IsNullOrEmpty(_exp1Id) || string.IsNullOrEmpty(_exp2Id) || _isComparing)">
+                </div>
+                <div class="compare-actions" style="margin-top: 24px; text-align: center;">
+                    <button class="tw-btn-primary" style="width: 240px;" @onclick="CompareAsync" disabled="@(string.IsNullOrEmpty(_exp1Id) || string.IsNullOrEmpty(_exp2Id) || _isComparing)">
                         @if (_isComparing)
                         {
                             <span class="spinner-inline"></span>
@@ -175,11 +187,20 @@
 
 @code {
     private List<TrainingHistoryItem>? _experiments;
-    private TrainWise.Web.Models.ExperimentDetail? _fullExp1;
-    private TrainWise.Web.Models.ExperimentDetail? _fullExp2;
     private string? _exp1Id;
     private string? _exp2Id;
+    private string? _selectedDatasetId;
+    private ExperimentModel? _fullExp1;
+    private ExperimentModel? _fullExp2;
     private bool _isComparing = false;
+
+    private void OnDatasetFilterChanged()
+    {
+        _exp1Id = null;
+        _exp2Id = null;
+        _fullExp1 = null;
+        _fullExp2 = null;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -288,7 +309,7 @@
 
     .selectors-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr 200px;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 24px;
         align-items: flex-end;
     }

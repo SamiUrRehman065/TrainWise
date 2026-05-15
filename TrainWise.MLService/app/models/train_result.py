@@ -32,3 +32,4 @@ class TrainResult(BaseModel):
     charts: Optional[Dict[str, Any]] = None
     crossValidationScores: Optional[List[float]] = None
     crossValidationMean: Optional[float] = None
+    modelPath: Optional[str] = None

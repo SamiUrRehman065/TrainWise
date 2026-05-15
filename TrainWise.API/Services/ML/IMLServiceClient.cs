@@ -9,5 +9,6 @@ public interface IMLServiceClient
     Task<DatasetIntelligenceDto?> GetIntelligenceAsync(Guid datasetId, string? targetColumn, string? filePath, CancellationToken cancellationToken);
     Task<TrainResultDto?> TrainAsync(TrainRequest request, CancellationToken cancellationToken);
     Task<List<RecommendationDto>?> RecommendAsync(object metrics, object config, object? analysis, CancellationToken cancellationToken);
+    Task<Stream?> DownloadModelAsync(string path, CancellationToken cancellationToken);
     Task<bool> HealthAsync(CancellationToken cancellationToken);
 }

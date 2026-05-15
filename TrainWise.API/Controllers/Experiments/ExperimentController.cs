@@ -77,6 +77,25 @@ public sealed class ExperimentController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> DownloadAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var experiment = await _experimentService.GetAsync(id, userId.Value, cancellationToken);
+        if (experiment == null || string.IsNullOrEmpty(experiment.ModelPath))
+        {
+            return NotFound("Model file not found or not yet generated.");
+        }
+
+        var stream = await _experimentService.DownloadModelAsync(experiment.ModelPath, cancellationToken);
+        if (stream == null) return NotFound("Model file could not be retrieved from the ML service.");
+
+        return File(stream, "application/octet-stream", $"model_{id}.joblib");
+    }
+
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult> DeleteAsync(
         Guid id,

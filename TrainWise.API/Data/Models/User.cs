@@ -15,9 +15,15 @@ public sealed class User
     [MaxLength(256)]
     public string PasswordHash { get; set; } = string.Empty;
 
-    public DateTime CreatedAt { get; set; }
-
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
+
+    // Workspace Preferences
+    public string Theme { get; set; } = "dark";
+    public string DefaultTaskType { get; set; } = "classification";
+    public int AutoArchiveDays { get; set; } = 30;
+    public bool StorageOptimization { get; set; } = true;
+    public bool IsPremium { get; set; } = false;
 
     public ICollection<Dataset> Datasets { get; set; } = new List<Dataset>();
 }

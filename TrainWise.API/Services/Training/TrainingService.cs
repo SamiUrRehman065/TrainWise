@@ -56,6 +56,7 @@ public sealed class TrainingService : ITrainingService
             HyperparametersJson = JsonSerializer.Serialize(request.Model.Hyperparameters),
             MetricsJson = JsonSerializer.Serialize(result),
             TrainingDurationSec = result.TrainingDurationSeconds,
+            ModelPath = result.ModelPath,
             CreatedAt = DateTime.UtcNow
         };
 

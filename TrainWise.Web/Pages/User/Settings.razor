@@ -1,7 +1,9 @@
 @page "/settings"
+@inject TrainWise.Web.Services.Api.UserApi UserApi
 @inject TrainWise.Web.Services.State.SessionState SessionState
 @inject NavigationManager NavManager
 @using TrainWise.Web.Components.Common
+@using TrainWise.Web.Models
 
 <div class="settings-page animate-fade-up">
     <section class="tw-section-header">
@@ -25,112 +27,184 @@
             </aside>
 
             <div class="settings-content">
-                @if (_activeTab == "general")
+                @if (_isLoading)
                 {
-                    <div class="tw-card settings-section animate-fade-up">
-                        <h2>General Preferences</h2>
-                        <div class="settings-group">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label">Interface Theme</span>
-                                    <span class="setting-desc">Adjust the visual appearance of the workspace.</span>
-                                </div>
-                                <select class="tw-input" @bind="_theme">
-                                    <option value="dark">Deep Navy (Default)</option>
-                                    <option value="light">Classic Light</option>
-                                    <option value="system">System Preference</option>
-                                </select>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label">Default Task Type</span>
-                                    <span class="setting-desc">Preferred ML task for new training sessions.</span>
-                                </div>
-                                <select class="tw-input" @bind="_defaultTask">
-                                    <option value="classification">Classification</option>
-                                    <option value="regression">Regression</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button class="tw-btn-primary">Save Changes</button>
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Syncing preferences...</p>
                     </div>
                 }
-                else if (_activeTab == "security")
+                else
                 {
-                    <div class="tw-card settings-section animate-fade-up">
-                        <h2>Security & Privacy</h2>
-                        <div class="settings-group">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label">Authentication Token</span>
-                                    <span class="setting-desc">Your unique identifier for API requests.</span>
+                    @if (_activeTab == "general")
+                    {
+                        <div class="tw-card settings-section animate-fade-up">
+                            <h2>General Preferences</h2>
+                            <div class="settings-group">
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Interface Theme</span>
+                                        <span class="setting-desc">Adjust the visual appearance of the workspace.</span>
+                                    </div>
+                                    <select class="tw-input" @bind="_settings.Theme">
+                                        <option value="dark">Deep Navy (Default)</option>
+                                        <option value="light">Classic Light</option>
+                                        <option value="system">System Preference</option>
+                                    </select>
                                 </div>
-                                <code class="tw-mono">@(SessionState.SessionToken?.Length > 12 ? SessionState.SessionToken[..12] : "********")****</code>
+
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Default Task Type</span>
+                                        <span class="setting-desc">Preferred ML task for new training sessions.</span>
+                                    </div>
+                                    <select class="tw-input" @bind="_settings.DefaultTaskType">
+                                        <option value="classification">Classification</option>
+                                        <option value="regression">Regression</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="tw-btn-primary" @onclick="SaveChanges">Save Changes</button>
+                        </div>
+                    }
+                    else if (_activeTab == "security")
+                    {
+                        <div class="tw-card settings-section animate-fade-up">
+                            <h2>Security & Privacy</h2>
+                            <div class="settings-group">
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Authentication Token</span>
+                                        <span class="setting-desc">Your unique identifier for API requests.</span>
+                                    </div>
+                                    <code class="tw-mono">@(SessionState.SessionToken?.Length > 12 ? SessionState.SessionToken[..12] : "********")****</code>
+                                </div>
+
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Password</span>
+                                        <span class="setting-desc">Update your login credentials.</span>
+                                    </div>
+                                    <button class="tw-btn-ghost">Update Password</button>
+                                </div>
                             </div>
 
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label">Password</span>
-                                    <span class="setting-desc">Update your login credentials.</span>
-                                </div>
-                                <button class="tw-btn-ghost">Update Password</button>
+                            <div class="danger-zone">
+                                <h3 class="text-danger">Danger Zone</h3>
+                                <p class="setting-desc">Irreversible account actions.</p>
+                                <button class="tw-btn-ghost text-danger" @onclick="DeactivateWorkspace">Deactivate Workspace</button>
                             </div>
                         </div>
+                    }
+                    else if (_activeTab == "storage")
+                    {
+                        <div class="tw-card settings-section animate-fade-up">
+                            <h2>Storage Management</h2>
+                            <div class="settings-group">
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Auto-Archive Policy</span>
+                                        <span class="setting-desc">Datasets older than this many days will be archived.</span>
+                                    </div>
+                                    <input type="number" class="tw-input" style="width: 100px;" @bind="_settings.AutoArchiveDays" min="1" max="365" />
+                                </div>
 
-                        <div class="danger-zone">
-                            <h3 class="text-danger">Danger Zone</h3>
-                            <p class="setting-desc">Irreversible account actions.</p>
-                            <button class="tw-btn-ghost text-danger">Deactivate Workspace</button>
-                        </div>
-                    </div>
-                }
-                else if (_activeTab == "storage")
-                {
-                    <div class="tw-card settings-section animate-fade-up">
-                        <h2>Storage Management</h2>
-                        <div class="settings-group">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label">Auto-Archive Policy</span>
-                                    <span class="setting-desc">Datasets older than this many days will be archived.</span>
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Storage Optimization</span>
+                                        <span class="setting-desc">Compress older training history to save space.</span>
+                                    </div>
+                                    <label class="tw-switch">
+                                        <input type="checkbox" @bind="_settings.StorageOptimization" />
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
-                                <input type="number" class="tw-input" style="width: 100px;" @bind="_archiveDays" min="1" max="365" />
                             </div>
+                            <button class="tw-btn-primary" @onclick="SaveChanges">Apply Policy</button>
+                        </div>
+                    }
 
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label">Storage Optimization</span>
-                                    <span class="setting-desc">Compress older training history to save space.</span>
-                                </div>
-                                <label class="tw-switch">
-                                    <input type="checkbox" checked />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
+                    @if (!string.IsNullOrEmpty(_message))
+                    {
+                        <div class="tw-badge @(_isError ? "danger" : "success") message-alert animate-fade-up">
+                            @_message
                         </div>
-                        <button class="tw-btn-primary">Apply Policy</button>
-                    </div>
+                    }
                 }
             </div>
         </div>
 </div>
 
 @code {
-    protected override void OnInitialized()
+    private UserSettingsResponse _settings = new();
+    private string _activeTab = "general";
+    private bool _isLoading = true;
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync()
     {
         if (!SessionState.IsAuthenticated)
         {
             NavManager.NavigateTo("/login");
+            return;
+        }
+
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        _isLoading = true;
+        try
+        {
+            var res = await UserApi.GetSettingsAsync();
+            if (res != null) _settings = res;
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
-    private string _activeTab = "general";
-    private string _theme = "dark";
-    private string _defaultTask = "classification";
-    private int _archiveDays = 30;
+    private async Task SaveChanges()
+    {
+        _message = null;
+        var req = new UpdateSettingsRequest
+        {
+            Theme = _settings.Theme,
+            DefaultTaskType = _settings.DefaultTaskType,
+            AutoArchiveDays = _settings.AutoArchiveDays,
+            StorageOptimization = _settings.StorageOptimization
+        };
 
-    private void SetTab(string tab) => _activeTab = tab;
+        var success = await UserApi.UpdateSettingsAsync(req);
+        if (success)
+        {
+            _message = "Settings updated successfully.";
+            _isError = false;
+        }
+        else
+        {
+            _message = "Failed to update settings.";
+            _isError = true;
+        }
+    }
+
+    private async Task DeactivateWorkspace()
+    {
+        var success = await UserApi.DeactivateWorkspaceAsync();
+        if (success)
+        {
+            _message = "Deactivation request received.";
+            _isError = false;
+        }
+    }
+
+    private void SetTab(string tab) {
+        _activeTab = tab;
+        _message = null;
+    }
 }
 
 <style>

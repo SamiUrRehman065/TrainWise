@@ -21,7 +21,14 @@
                     </div>
                     <div class="profile-title">
                         <h2>@SessionState.Username</h2>
-                        <span class="tw-badge success">Premium Member</span>
+                        @if (_stats?.IsPremium == true)
+                        {
+                            <span class="tw-badge success">Premium Member</span>
+                        }
+                        else
+                        {
+                            <span class="tw-badge warning">Standard Member</span>
+                        }
                     </div>
                 </div>
 
@@ -36,7 +43,7 @@
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Joined</span>
-                        <span class="detail-value">May 2026</span>
+                        <span class="detail-value">@(_stats?.MemberSince.ToString("MMMM yyyy") ?? "...")</span>
                     </div>
                 </div>
 

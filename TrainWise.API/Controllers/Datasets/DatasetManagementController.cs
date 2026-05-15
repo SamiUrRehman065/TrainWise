@@ -54,6 +54,9 @@ public sealed class DatasetManagementController : ControllerBase
             return Unauthorized();
         }
 
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+        if (user == null) return Unauthorized();
+
         var datasets = await _dbContext.Datasets
             .AsNoTracking()
             .Where(d => d.UserId == userId.Value)
@@ -63,13 +66,38 @@ public sealed class DatasetManagementController : ControllerBase
         var experiments = datasets.SelectMany(d => d.Experiments).ToList();
         var totalSize = datasets.Sum(d => (long)d.RowCount * d.ColumnCount);
 
+        double bestAccuracy = 0;
+        foreach (var exp in experiments)
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(exp.MetricsJson);
+                if (doc.RootElement.TryGetProperty("classificationMetrics", out var metrics) || 
+                    doc.RootElement.TryGetProperty("ClassificationMetrics", out metrics))
+                {
+                    if (metrics.TryGetProperty("accuracy", out var acc) || metrics.TryGetProperty("Accuracy", out acc))
+                    {
+                        var val = acc.GetDouble();
+                        if (val > bestAccuracy) bestAccuracy = val;
+                    }
+                }
+            }
+            catch { /* Ignore invalid JSON */ }
+        }
+
+        var modelsTried = experiments.Select(e => e.ModelName).Distinct().Count();
+
         return Ok(new DashboardStatsResponse
         {
             TotalDatasets = datasets.Count,
             ActiveDatasets = datasets.Count(d => d.Experiments.Count > 0),
             TotalExperiments = experiments.Count,
+            BestAccuracy = bestAccuracy,
+            ModelsTried = modelsTried,
             EstimatedSize = totalSize,
-            StorageMode = _storageService.GetStorageMode()
+            StorageMode = _storageService.GetStorageMode(),
+            IsPremium = user.IsPremium,
+            MemberSince = user.CreatedAt
         });
     }
 
@@ -186,8 +214,12 @@ public sealed class DashboardStatsResponse
     public int TotalDatasets { get; set; }
     public int ActiveDatasets { get; set; }
     public int TotalExperiments { get; set; }
+    public double BestAccuracy { get; set; }
+    public int ModelsTried { get; set; }
     public long EstimatedSize { get; set; }
     public string StorageMode { get; set; } = string.Empty;
+    public bool IsPremium { get; set; }
+    public DateTime MemberSince { get; set; }
 }
 
 public sealed class ArchiveResponse

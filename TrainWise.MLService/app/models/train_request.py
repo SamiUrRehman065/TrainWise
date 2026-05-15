@@ -1,4 +1,4 @@
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 class PreprocessingConfig(BaseModel):
@@ -14,17 +14,12 @@ class ModelHyperparameters(BaseModel):
     kernel: Optional[str] = None
     n_neighbors: Optional[int] = None
     max_iter: Optional[int] = None
+    alpha: Optional[float] = None
+    max_depth: Optional[int] = None
+    additionalParams: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 class ModelConfig(BaseModel):
-    name: Literal[
-        "LogisticRegression",
-        "RandomForest",
-        "SVM",
-        "KNN",
-        "LinearRegression",
-        "RandomForestRegressor",
-        "SVR",
-    ]
+    name: str # Simplified to allow more models without literal restriction
     hyperparameters: ModelHyperparameters = Field(default_factory=ModelHyperparameters)
 
 class TrainRequest(BaseModel):
@@ -35,4 +30,5 @@ class TrainRequest(BaseModel):
     model: ModelConfig
     trainTestSplit: float = 0.8
     crossValidation: bool = False
+    kFolds: int = 5
     filePath: Optional[str] = None
