@@ -43,7 +43,12 @@ async def train(request: TrainRequest) -> TrainResult:
     Supports classification and regression tasks.
     Returns TrainResult JSON.
     """
-    return train_model(request)
+    try:
+        return train_model(request)
+    except Exception as ex:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(ex))
 
 @router.post("/recommend", response_model=list[Recommendation])
 async def recommend(request: RecommendRequest) -> list[Recommendation]:

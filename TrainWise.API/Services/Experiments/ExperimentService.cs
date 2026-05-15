@@ -66,7 +66,11 @@ public sealed class ExperimentService : IExperimentService
             crossValidation = false
         };
 
-        return await _mlServiceClient.RecommendAsync(metrics, config, cancellationToken);
+        object? analysis = string.IsNullOrWhiteSpace(experiment.Dataset?.AnalysisSummaryJson)
+            ? null
+            : JsonSerializer.Deserialize<object>(experiment.Dataset.AnalysisSummaryJson)!;
+
+        return await _mlServiceClient.RecommendAsync(metrics, config, analysis, cancellationToken);
     }
 
     public async Task<ExperimentListDto> GetHistoryAsync(Guid userId, int page, int pageSize, CancellationToken cancellationToken)

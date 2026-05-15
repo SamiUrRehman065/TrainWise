@@ -176,7 +176,14 @@
 
                     @if (!string.IsNullOrEmpty(_message))
                     {
-                        <div class="tw-badge @(_messageType == "success" ? "success" : "danger") message-alert">
+                        var alertClass = _messageType switch
+                        {
+                            "success" => "success",
+                            "error" => "danger",
+                            "info" => "info",
+                            _ => "info"
+                        };
+                        <div class="tw-badge @alertClass message-alert">
                             @_message
                         </div>
                     }
@@ -276,16 +283,56 @@
         _selectedDataset = null;
         _columns = null;
         _request.TargetColumn = string.Empty;
+        _message = null;
 
         if (!string.IsNullOrEmpty(_selectedDatasetId) && Guid.TryParse(_selectedDatasetId, out var datasetId))
         {
             _selectedDataset = _datasets?.FirstOrDefault(d => d.DatasetId == datasetId);
             _request.DatasetId = _selectedDatasetId;
 
-            var summary = await DatasetApi.GetSummaryAsync(datasetId);
-            if (summary?.ColumnTypes is not null)
+            _isLoading = true;
+            try
             {
-                _columns = summary.ColumnTypes.Keys.ToList();
+                // Get deep intelligence to auto-suggest task and target
+                var intelligence = await DatasetApi.GetIntelligenceAsync(datasetId);
+                if (intelligence?.Overview is not null)
+                {
+                    _columns = intelligence.Features.Select(f => f.Name).ToList();
+                    
+                    // Auto-suggest target
+                    if (!string.IsNullOrEmpty(intelligence.Overview.TargetColumn))
+                    {
+                        _request.TargetColumn = intelligence.Overview.TargetColumn;
+                    }
+
+                    // Auto-suggest problem type
+                    if (intelligence.Overview.ProblemType.Contains("Classification"))
+                    {
+                        _request.TaskType = "classification";
+                        _request.Model.Name = "RandomForest";
+                    }
+                    else if (intelligence.Overview.ProblemType.Contains("Regression"))
+                    {
+                        _request.TaskType = "regression";
+                        _request.Model.Name = "RandomForestRegressor";
+                    }
+                    
+                    _message = $"System detected: {intelligence.Overview.ProblemType}. Configurations auto-applied.";
+                    _messageType = "info";
+                }
+            }
+            catch (Exception ex)
+            {
+                // Fallback to basic summary if intelligence fails
+                var summary = await DatasetApi.GetSummaryAsync(datasetId);
+                if (summary?.ColumnTypes is not null)
+                {
+                    _columns = summary.ColumnTypes.Keys.ToList();
+                }
+            }
+            finally
+            {
+                _isLoading = false;
             }
         }
     }

@@ -129,9 +129,14 @@
                                 <span style="color: #22d3ee; font-weight: 700;">@_intelligence.QualityReport.OverallScore.ToString("0") / 100</span>
                             </div>
                             <div class="eda-stat-item">
-                                <label>Memory Size</label>
-                                <span>@((_intelligence.Overview.SizeBytes / (1024.0 * 1024.0)).ToString("0.0")) MB</span>
+                                <label>Problem Type</label>
+                                <span class="tw-badge info">@_intelligence.Overview.ProblemType</span>
                             </div>
+                        </div>
+
+                        <div class="eda-tip">
+                            <span class="icon">💡</span>
+                            <small>Recommendation: Use <strong>@_intelligence.Overview.ProblemType</strong> models for this dataset.</small>
                         </div>
 
                         @if (_intelligence.Features.Any(f => !f.IsTarget && f.RelevanceScore > 0))
@@ -388,7 +393,29 @@
     }
 
     .eda-stat-item label { color: var(--text-muted); }
-    .eda-stat-item span { font-weight: 700; color: var(--text-h1); }
+    .eda-tip {
+        background: rgba(34, 211, 238, 0.05);
+        border: 1px solid rgba(34, 211, 238, 0.1);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .eda-tip .icon {
+        font-size: 1.2rem;
+    }
+
+    .eda-tip small {
+        color: var(--text-body);
+        line-height: 1.4;
+    }
+
+    .eda-tip strong {
+        color: var(--accent-cyan);
+    }
 
     .sub-heading {
         font-size: 0.8rem;

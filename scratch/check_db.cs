@@ -1,21 +1,14 @@
-using Microsoft.EntityFrameworkCore;
-using TrainWise.API.Data;
-using TrainWise.API.Data.Models;
 
-var builder = WebApplication.CreateBuilder(args);
-var connectionString = "Server=localhost,1433;Database=TrainWiseDb;User Id=sa;Password=CHANGE_ME_IN_ENV;TrustServerCertificate=True";
+using Microsoft.Data.SqlClient;
+using System;
 
-var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-optionsBuilder.UseSqlServer(connectionString);
-
-using var context = new AppDbContext(optionsBuilder.Options);
-
-var users = await context.Users.ToListAsync();
-Console.WriteLine($"Total Users: {users.Count}");
-foreach (var u in users) Console.WriteLine($"- {u.Username} ({u.UserId})");
-
-var datasets = await context.Datasets.ToListAsync();
-Console.WriteLine($"Total Datasets: {datasets.Count}");
-
-var experiments = await context.Experiments.ToListAsync();
-Console.WriteLine($"Total Experiments: {experiments.Count}");
+try {
+    string connString = "Data Source=.\\SQLEXPRESS;Initial Catalog=TrainWiseDb;Integrated Security=True;Encrypt=True;Trust Server Certificate=True;Connect Timeout=5";
+    using var conn = new SqlConnection(connString);
+    Console.WriteLine("Attempting to connect to SQL Server...");
+    conn.Open();
+    Console.WriteLine("Connection SUCCESSFUL!");
+} catch (Exception ex) {
+    Console.WriteLine("Connection FAILED!");
+    Console.WriteLine(ex.Message);
+}

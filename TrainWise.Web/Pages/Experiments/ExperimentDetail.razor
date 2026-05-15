@@ -379,6 +379,8 @@
         if (_experiment?.Charts != null && !_chartsRendered)
         {
             _chartsRendered = true;
+            // Give the browser a moment to ensure the chart containers are in the DOM
+            await Task.Delay(100);
             await RenderChartsAsync();
         }
     }

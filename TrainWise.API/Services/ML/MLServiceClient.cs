@@ -52,9 +52,9 @@ public sealed class MLServiceClient : IMLServiceClient
         return await response.Content.ReadFromJsonAsync<TrainResultDto>(cancellationToken: cancellationToken);
     }
 
-    public async Task<List<RecommendationDto>?> RecommendAsync(object metrics, object config, CancellationToken cancellationToken)
+    public async Task<List<RecommendationDto>?> RecommendAsync(object metrics, object config, object? analysis, CancellationToken cancellationToken)
     {
-        var payload = new { metrics, config };
+        var payload = new { metrics, config, analysis };
         var response = await _httpClient.PostAsJsonAsync("/recommend", payload, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {

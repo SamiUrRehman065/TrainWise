@@ -31,16 +31,21 @@
                     </div>
                     <div class="selector-item">
                         <label>Comparison Run (Experiment 2)</label>
-                        <select class="tw-input" @bind="_exp2Id" @bind:after="OnExperimentSelected">
+                        <select class="tw-input" @bind="_exp2Id" @bind:after="OnExperimentSelected" disabled="@(string.IsNullOrEmpty(_exp1Id))">
                             <option value="">-- Select comparison --</option>
                             @if (_experiments?.Any() == true)
                             {
-                                @foreach (var exp in _experiments)
+                                var baseline = _experiments.FirstOrDefault(e => e.ExperimentId.ToString() == _exp1Id);
+                                @foreach (var exp in _experiments.Where(e => e.ExperimentId.ToString() != _exp1Id && (baseline == null || e.DatasetId == baseline.DatasetId)))
                                 {
-                                    <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType)</option>
+                                    <option value="@exp.ExperimentId">@exp.ModelName (@exp.TaskType) - @exp.CreatedAt.ToShortDateString()</option>
                                 }
                             }
                         </select>
+                        @if (string.IsNullOrEmpty(_exp1Id))
+                        {
+                            <span class="tw-info-text">Select a baseline first</span>
+                        }
                     </div>
                     <button class="tw-btn-primary" @onclick="CompareAsync" disabled="@(string.IsNullOrEmpty(_exp1Id) || string.IsNullOrEmpty(_exp2Id) || _isComparing)">
                         @if (_isComparing)
@@ -199,7 +204,20 @@
         }
     }
 
-    private void OnExperimentSelected() { StateHasChanged(); }
+    private void OnExperimentSelected() 
+    { 
+        if (!string.IsNullOrEmpty(_exp1Id) && !string.IsNullOrEmpty(_exp2Id))
+        {
+            var exp1 = _experiments?.FirstOrDefault(e => e.ExperimentId.ToString() == _exp1Id);
+            var exp2 = _experiments?.FirstOrDefault(e => e.ExperimentId.ToString() == _exp2Id);
+            
+            if (exp1 != null && exp2 != null && exp1.DatasetId != exp2.DatasetId)
+            {
+                _exp2Id = null; // Reset second if dataset mismatch
+            }
+        }
+        StateHasChanged(); 
+    }
 
     private async Task CompareAsync()
     {
@@ -335,6 +353,14 @@
 
     .row-diff td {
         background: rgba(251, 191, 36, 0.03);
+    }
+
+    .tw-info-text {
+        font-size: 0.75rem;
+        color: var(--accent-violet);
+        opacity: 0.8;
+        margin-top: 4px;
+        font-style: italic;
     }
 
     .text-success { color: #34d399 !important; }

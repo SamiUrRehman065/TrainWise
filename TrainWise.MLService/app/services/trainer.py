@@ -65,14 +65,14 @@ def train_model(request: TrainRequest) -> TrainResult:
 
     if request.taskType == "classification" and request.preprocessing.applySmote:
         counts = y_train.value_counts()
-        if len(counts) > 1:
+        if len(counts) > 1 and counts.min() > 6:
             imbalance_ratio = counts.max() / counts.min()
             if imbalance_ratio > 1.5:
                 smote = SMOTE(random_state=42)
                 x_train, y_train = smote.fit_resample(x_train, y_train)
 
     hyperparameters = _build_hyperparameters(request)
-    model = ModelFactory.create(request.model.name, **hyperparameters)
+    model = ModelFactory.create(request.model.name, request.taskType, **hyperparameters)
 
     start_time = time.perf_counter()
     model.fit(x_train, y_train)
@@ -86,20 +86,26 @@ def train_model(request: TrainRequest) -> TrainResult:
     cv_mean = None
     if request.crossValidation:
         scoring = "accuracy" if request.taskType == "classification" else "r2"
-        cv_model = ModelFactory.create(request.model.name, **hyperparameters)
-        scores = cross_val_score(cv_model, x_df, y, cv=5, scoring=scoring)
-        cv_scores = [round(float(s), 4) for s in scores]
-        cv_mean = round(float(scores.mean()), 4)
-
-    result = _build_result(
-        request,
-        y_test,
-        y_pred,
-        duration,
-        feature_importances,
-        cv_scores,
-        cv_mean,
-    )
+        cv_model = ModelFactory.create(request.model.name, request.taskType, **hyperparameters)
+        
+        # SRS FR-5: Ensure CV folds are appropriate for dataset size
+        # StratifiedKFold (used for classification) needs at least 'cv' samples per class
+        min_samples = 5
+        if request.taskType == "classification":
+            class_counts = y.value_counts()
+            min_samples = class_counts.min()
+            
+        n_folds = min(5, len(x_df), min_samples)
+        
+        if n_folds > 1:
+            try:
+                scores = cross_val_score(cv_model, x_df, y, cv=n_folds, scoring=scoring)
+                cv_scores = [round(float(s), 4) for s in scores]
+                cv_mean = round(float(scores.mean()), 4)
+            except Exception as cv_ex:
+                print(f"CV Warning: {cv_ex}")
+                cv_scores = None
+                cv_mean = None
 
     # Attach Charts
     charts = {}
@@ -109,50 +115,98 @@ def train_model(request: TrainRequest) -> TrainResult:
         if hasattr(model, "predict_proba"):
             y_probs = model.predict_proba(x_test)
         
-        labels = label_encoder.classes_.tolist() if label_encoder else sorted(y.unique().tolist())
-        result.classificationMetrics.classLabels = [str(l) for l in labels]
+        # Determine labels from y or label_encoder if used
+        labels = sorted(y.unique().tolist())
+        
+        metrics = ClassificationMetrics(
+            accuracy=float(accuracy_score(y_test, y_pred)),
+            precision=float(precision_score(y_test, y_pred, average="macro", zero_division=0)),
+            recall=float(recall_score(y_test, y_pred, average="macro", zero_division=0)),
+            f1Score=float(f1_score(y_test, y_pred, average="macro", zero_division=0)),
+            confusionMatrix=confusion_matrix(y_test, y_pred).tolist(),
+            classLabels=[str(l) for l in labels]
+        )
         
         charts["ConfusionMatrix"] = ChartBuilder.build_confusion_matrix(y_test, y_pred, labels)
         charts["ClassComparison"] = ChartBuilder.build_class_comparison(y_test, y_pred, labels)
         
         if y_probs is not None:
-            charts["RocCurve"] = ChartBuilder.build_roc_curve(y_test, y_probs)
-            charts["PrecisionRecall"] = ChartBuilder.build_precision_recall_curve(y_test, y_probs)
-            charts["ProbabilityDist"] = ChartBuilder.build_probability_distribution(y_probs)
+            roc = ChartBuilder.build_roc_curve(y_test, y_probs)
+            if roc: charts["RocCurve"] = roc
+            
+            pr = ChartBuilder.build_precision_recall_curve(y_test, y_probs)
+            if pr: charts["PrecisionRecall"] = pr
+            
+            prob = ChartBuilder.build_probability_distribution(y_probs)
+            if prob: charts["ProbabilityDist"] = prob
         
         charts["FeatureImportance"] = ChartBuilder.build_feature_importance(model, x_df.columns.tolist())
         if cv_scores:
-            charts["CrossValidation"] = ChartBuilder.build_cv_metrics(cv_scores)
+            cv = ChartBuilder.build_cv_metrics(cv_scores)
+            if cv: charts["CrossValidation"] = cv
+
+        result = TrainResult(
+            experimentId="",
+            modelName=request.model.name,
+            taskType=request.taskType,
+            classificationMetrics=metrics,
+            regressionMetrics=None,
+            featureImportances=feature_importances,
+            trainingDurationSeconds=round(duration, 4),
+            recommendations=[],
+            cvScores=cv_scores,
+            cvMean=cv_mean,
+            charts=charts
+        )
     else:
+        # Use RMSE helper or legacy squared=False
+        try:
+            from sklearn.metrics import root_mean_squared_error
+            rmse_val = float(root_mean_squared_error(y_test, y_pred))
+        except ImportError:
+            rmse_val = float(mean_squared_error(y_test, y_pred, squared=False))
+
+        metrics = RegressionMetrics(
+            r2Score=float(r2_score(y_test, y_pred)),
+            rmse=rmse_val,
+            mae=float(mean_absolute_error(y_test, y_pred)),
+            mse=float(mean_squared_error(y_test, y_pred)),
+        )
+        
         charts["ActualVsPredicted"] = ChartBuilder.build_actual_vs_predicted(y_test, y_pred)
         charts["ResidualsScatter"] = ChartBuilder.build_residuals_scatter(y_test, y_pred)
         charts["ResidualsDistribution"] = ChartBuilder.build_residuals_distribution(y_test, y_pred)
-        charts["QqPlot"] = ChartBuilder.build_qq_plot(y_test, y_pred)
+        
+        qq = ChartBuilder.build_qq_plot(y_test, y_pred)
+        if qq: charts["QqPlot"] = qq
+        
         charts["FeatureImportance"] = ChartBuilder.build_feature_importance(model, x_df.columns.tolist())
         if cv_scores:
-            charts["CrossValidation"] = ChartBuilder.build_cv_metrics(cv_scores)
-    
-    result.charts = charts
+            cv = ChartBuilder.build_cv_metrics(cv_scores)
+            if cv: charts["CrossValidation"] = cv
 
-    y_train_pred = model.predict(x_train)
-    if request.taskType == "classification":
-        train_acc = float(accuracy_score(y_train, y_train_pred))
-        train_f1 = float(f1_score(y_train, y_train_pred, average="weighted"))
-        result.classificationMetrics.trainAccuracy = train_acc
-        result.classificationMetrics.trainF1Score = train_f1
-    else:
-        train_rmse = float(mean_squared_error(y_train, y_train_pred, squared=False))
-        train_r2 = float(r2_score(y_train, y_train_pred))
-        result.regressionMetrics.trainRmse = train_rmse
-        result.regressionMetrics.trainR2 = train_r2
+        result = TrainResult(
+            experimentId="",
+            modelName=request.model.name,
+            taskType=request.taskType,
+            classificationMetrics=None,
+            regressionMetrics=metrics,
+            featureImportances=feature_importances,
+            trainingDurationSeconds=round(duration, 4),
+            recommendations=[],
+            cvScores=cv_scores,
+            cvMean=cv_mean,
+            charts=charts
+        )
 
+    # Post-train recommendations
     analysis = analyze_dataset(file_path, request.datasetId)
     engine = RecommendationEngine()
     metrics_payload = _metrics_payload(result)
     config_payload = request.model_dump()
     analysis_payload = analysis.model_dump()
-    recommendations = engine.evaluate_all(metrics_payload, config_payload, analysis_payload)
-    result.recommendations = recommendations
+    result.recommendations = engine.evaluate_all(metrics_payload, config_payload, analysis_payload)
+    
     return result
 
 

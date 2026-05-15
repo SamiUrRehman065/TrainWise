@@ -17,8 +17,11 @@ class ChartBuilder:
         y_true = np.array(y_true)
         y_probs = np.array(y_probs)
         
-        # Binary or use second column for multi
-        probs = y_probs[:, 1] if len(y_probs.shape) > 1 else y_probs
+        # Binary classification only for ROC
+        if len(np.unique(y_true)) != 2 or y_probs.shape[1] < 2:
+            return None
+            
+        probs = y_probs[:, 1]
         fpr, tpr, _ = roc_curve(y_true, probs)
         roc_auc = auc(fpr, tpr)
         
@@ -31,7 +34,14 @@ class ChartBuilder:
 
     @staticmethod
     def build_precision_recall_curve(y_true, y_probs):
-        probs = y_probs[:, 1] if len(y_probs.shape) > 1 else y_probs
+        y_true = np.array(y_true)
+        y_probs = np.array(y_probs)
+        
+        # Binary classification only for PR Curve
+        if len(np.unique(y_true)) != 2 or y_probs.shape[1] < 2:
+            return None
+            
+        probs = y_probs[:, 1]
         precision, recall, _ = precision_recall_curve(y_true, probs)
         avg_precision = average_precision_score(y_true, probs)
         
@@ -118,9 +128,24 @@ class ChartBuilder:
         """
         Compares actual vs predicted class frequencies.
         """
-        y_true, y_pred = list(y_true), list(y_pred)
-        actual_counts = [y_true.count(l) for l in range(len(labels))]
-        pred_counts = [y_pred.count(l) for l in range(len(labels))]
+        y_true_list = list(y_true)
+        y_pred_list = list(y_pred)
+        
+        # Count occurrences for each actual label value
+        actual_counts = []
+        pred_counts = []
+        
+        for i, label in enumerate(labels):
+            # If y was label encoded, it contains 0, 1, 2...
+            # If not, it contains the original values.
+            # In both cases, the index 'i' or the 'label' value itself 
+            # should match the values in the lists.
+            count_true = y_true_list.count(i) if isinstance(y_true_list[0], (int, np.integer)) else y_true_list.count(label)
+            count_pred = y_pred_list.count(i) if isinstance(y_pred_list[0], (int, np.integer)) else y_pred_list.count(label)
+            
+            actual_counts.append(count_true)
+            pred_counts.append(count_pred)
+
         return {
             "Labels": [str(l) for l in labels],
             "ActualCounts": actual_counts,
