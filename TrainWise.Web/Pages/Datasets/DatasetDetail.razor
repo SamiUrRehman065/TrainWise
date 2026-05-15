@@ -117,34 +117,34 @@
                         </button>
                     </div>
 
-                    @if (_eda is null)
+                    @if (_intelligence is null)
                     {
-                        <p class="text-muted">Run exploratory analysis to see memory usage and feature correlations.</p>
+                        <p class="text-muted">Run automated intelligence to see health scores and predictive relevance.</p>
                     }
                     else
                     {
                         <div class="eda-stats">
                             <div class="eda-stat-item">
-                                <label>Memory Usage</label>
-                                <span>@_eda.MemoryUsageMb.ToString("0.00") MB</span>
+                                <label>Health Score</label>
+                                <span style="color: #22d3ee; font-weight: 700;">@_intelligence.QualityReport.OverallScore.ToString("0") / 100</span>
                             </div>
                             <div class="eda-stat-item">
-                                <label>Duplicates</label>
-                                <span>@_eda.DuplicateRows (@_eda.DuplicatePercentage.ToString("0.##")%)</span>
+                                <label>Memory Size</label>
+                                <span>@((_intelligence.Overview.SizeBytes / (1024.0 * 1024.0)).ToString("0.0")) MB</span>
                             </div>
                         </div>
 
-                        @if (_eda.TopTargetCorrelations.Any())
+                        @if (_intelligence.Features.Any(f => !f.IsTarget && f.RelevanceScore > 0))
                         {
-                            <h4 class="sub-heading">Feature Importance</h4>
+                            <h4 class="sub-heading">Predictive Features</h4>
                             <div class="correlation-list">
-                                @foreach (var c in _eda.TopTargetCorrelations.Take(5))
+                                @foreach (var f in _intelligence.Features.Where(f => !f.IsTarget).OrderByDescending(f => f.RelevanceScore).Take(5))
                                 {
-                                    var width = (int)(Math.Min(1, Math.Abs(c.Correlation)) * 100);
+                                    var width = (int)(f.RelevanceScore * 100);
                                     <div class="corr-item">
                                         <div class="corr-label">
-                                            <span>@c.Feature</span>
-                                            <span class="tw-mono">@c.Correlation.ToString("0.###")</span>
+                                            <span>@f.Name</span>
+                                            <span class="tw-mono">@((f.RelevanceScore * 100).ToString("0"))%</span>
                                         </div>
                                         <div class="tw-progress-bar">
                                             <div class="progress-fill" style="width:@($"{width}%")"></div>
@@ -192,7 +192,7 @@
     [Parameter] public string? Id { get; set; }
     private DatasetSummary? _summary;
     private List<ExperimentListItem>? _relatedExperiments;
-    private EdaReport? _eda;
+    private DatasetIntelligence? _intelligence;
     private bool _isEdaLoading;
     private bool _isLoading = true;
     private string _datasetName = "Dataset Details";
@@ -257,7 +257,7 @@
         try
         {
             var target = _summary?.Columns.LastOrDefault();
-            _eda = await DatasetApi.GetEdaAsync(datasetId, target);
+            _intelligence = await DatasetApi.GetIntelligenceAsync(datasetId, target);
         }
         finally
         {

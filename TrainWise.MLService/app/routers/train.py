@@ -5,9 +5,7 @@ from app.models.dataset_summary import DatasetSummary
 from app.models.train_request import TrainRequest
 from app.models.train_result import TrainResult
 from app.models.recommendation import Recommendation
-from app.models.eda_report import EdaReport
 from app.services.analyzer import analyze_dataset
-from app.services.analyzer import generate_eda_report
 from app.services.trainer import train_model
 from app.services.recommendation_engine import RecommendationEngine
 from app.services.intelligence_service import compute_intelligence
@@ -65,15 +63,7 @@ async def health_check() -> dict:
     """
     return {"status": "ok"}
 
-@router.post("/eda", response_model=EdaReport)
-async def eda(request: EdaRequest) -> EdaReport:
-    """
-    Generate deeper EDA insights for the selected dataset.
-    """
-    try:
-        return generate_eda_report(request.datasetId, request.targetColumn, request.filePath)
-    except ValueError as ex:
-        raise HTTPException(status_code=400, detail=str(ex))
+
 
 @router.post("/intelligence", response_model=DatasetIntelligence)
 async def intelligence(request: EdaRequest) -> DatasetIntelligence:

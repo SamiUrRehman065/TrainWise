@@ -77,6 +77,12 @@ public sealed class CorrelationAnalysisDto
     public List<FeatureCorrelationDto> HighCorrelations { get; set; } = new();
 }
 
+public sealed class FeatureCorrelationDto
+{
+    public string Feature { get; set; } = string.Empty;
+    public double Correlation { get; set; }
+}
+
 public sealed class MissingValueAnalysisDto
 {
     public Dictionary<string, int> MissingByColumn { get; set; } = new();

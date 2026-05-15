@@ -205,16 +205,6 @@ public sealed class DatasetService : IDatasetService
         return summary;
     }
 
-    public async Task<EdaReportDto?> GetEdaAsync(Guid datasetId, Guid userId, string? targetColumn, CancellationToken cancellationToken)
-    {
-        var dataset = await _dbContext.Datasets
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.DatasetId == datasetId && d.UserId == userId, cancellationToken);
-
-        if (dataset is null) return null;
-
-        return await _mlServiceClient.EdaAsync(datasetId, targetColumn, dataset.FilePath, cancellationToken);
-    }
 
     public async Task<DatasetIntelligenceDto?> GetIntelligenceAsync(Guid datasetId, Guid userId, string? targetColumn, CancellationToken cancellationToken)
     {
