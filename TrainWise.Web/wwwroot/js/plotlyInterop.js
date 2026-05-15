@@ -298,5 +298,49 @@ window.PlotlyInterop = {
             margin: { t: 40, r: 20, b: 40, l: 120 }
         };
         Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
+    },
+
+    renderBoxPlot: function (elementId, values, title) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const data = [{
+            y: values,
+            type: 'box',
+            marker: { color: '#00F2FF' },
+            boxmean: 'sd'
+        }];
+        const layout = {
+            title: title || '',
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'rgba(255,255,255,0.02)',
+            font: { family: 'Inter, sans-serif', color: '#FFFFFF' },
+            margin: { t: 40, r: 20, b: 40, l: 40 },
+            xaxis: { showgrid: false },
+            yaxis: { gridcolor: 'rgba(255,255,255,0.1)' }
+        };
+        Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
+    },
+
+    renderDistributionHistogram: function (elementId, labels, values, color = '#00F2FF') {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const data = [{
+            x: labels,
+            y: values,
+            type: 'bar',
+            marker: {
+                color: color,
+                line: { width: 0 }
+            }
+        }];
+        const layout = {
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { family: 'Inter, sans-serif', color: '#FFFFFF', size: 10 },
+            margin: { t: 10, r: 10, b: 30, l: 30 },
+            xaxis: { showgrid: false, zeroline: false },
+            yaxis: { showgrid: false, zeroline: false }
+        };
+        Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
     }
 };

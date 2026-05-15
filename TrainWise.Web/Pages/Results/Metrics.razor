@@ -1,4 +1,5 @@
 @page "/results/{ExperimentId:guid}"
+@inject IJSRuntime JSRuntime
 @inject TrainWise.Web.Services.Api.ExperimentApi ExperimentApi
 @inject TrainWise.Web.Services.State.SessionState SessionState
 @inject NavigationManager NavManager
@@ -7,13 +8,7 @@
 @using TrainWise.Web.Components.Charts
 
 <div class="metrics-page animate-fade-up">
-    @if (!SessionState.IsAuthenticated)
-    {
-        <div class="tw-card">
-            <p>Please <a href="/login">sign in</a> to view performance metrics.</p>
-        </div>
-    }
-    else if (_isLoading)
+    @if (_isLoading)
     {
         <div class="tw-card animate-fade-up" style="text-align: center; padding: 80px;">
             <div class="loading-spinner"></div>
@@ -63,7 +58,84 @@
 
             <div class="detailed-analysis-grid">
                 <!-- CONFUSION MATRIX -->
-                @if (_experiment.Metrics.ConfusionMatrix is not null)
+                @if (_experiment.Charts != null)
+                {
+                    <section class="visualization-section animate-fade-up" style="animation-delay: 0.1s; margin-top: 40px;">
+                        <div class="section-header">
+                            <h3>📊 Advanced Performance Analytics</h3>
+                            <p class="subtitle">Deep-dive diagnostics for the @_experiment.ModelName model.</p>
+                        </div>
+
+                        @if (_experiment.TaskType.Equals("classification", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="chart-grid">
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Confusion Matrix</span></div>
+                                    <div id="chart-confusion-matrix" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>ROC Curve</span></div>
+                                    <div id="chart-roc-curve" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Precision-Recall Curve</span></div>
+                                    <div id="chart-pr-curve" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Confidence Distribution</span></div>
+                                    <div id="chart-prob-dist" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Class Comparison</span></div>
+                                    <div id="chart-class-comp" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Feature Importance</span></div>
+                                    <div id="chart-feat-imp-cls" class="plotly-container"></div>
+                                </div>
+                            </div>
+                        }
+                        else if (_experiment.TaskType.Equals("regression", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="chart-grid">
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Actual vs Predicted</span></div>
+                                    <div id="chart-actual-pred" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Residuals Plot</span></div>
+                                    <div id="chart-residuals-scatter" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Error Distribution</span></div>
+                                    <div id="chart-residuals-dist" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Q-Q Plot</span></div>
+                                    <div id="chart-qq-plot" class="plotly-container"></div>
+                                </div>
+                                <div class="tw-card chart-card">
+                                    <div class="chart-header"><span>Feature Importance</span></div>
+                                    <div id="chart-feat-imp-reg" class="plotly-container"></div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (_experiment.Charts.CrossValidation != null)
+                        {
+                            <div class="chart-grid" style="margin-top: 24px;">
+                                <div class="tw-card chart-card" style="grid-column: span 2; min-height: 350px;">
+                                    <div class="chart-header">
+                                        <span>Cross-Validation Stability</span>
+                                        <span class="tw-badge success">Mean: @(_experiment.Charts.CrossValidation.Mean.ToString("F3"))</span>
+                                    </div>
+                                    <div id="chart-cv-variance" class="plotly-container"></div>
+                                </div>
+                            </div>
+                        }
+                    </section>
+                }
+                else if (_experiment.Metrics.ConfusionMatrix is not null)
                 {
                     <div class="tw-card matrix-container animate-fade-up" style="animation-delay: 0.1s;">
                         <h3>📊 Confusion Matrix</h3>
@@ -127,6 +199,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         await LoadMetrics();
     }
 
@@ -143,6 +220,73 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private bool _chartsRendered = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_experiment?.Charts != null && !_chartsRendered)
+        {
+            _chartsRendered = true;
+            await RenderChartsAsync();
+        }
+    }
+
+    private async Task RenderChartsAsync()
+    {
+        try
+        {
+            if (_experiment?.Charts == null) return;
+
+            if (_experiment.TaskType.Equals("classification", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_experiment.Charts.ConfusionMatrix != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderConfusionMatrix", "chart-confusion-matrix", _experiment.Charts.ConfusionMatrix);
+                
+                if (_experiment.Charts.RocCurve != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderRocCurve", "chart-roc-curve", _experiment.Charts.RocCurve);
+                
+                if (_experiment.Charts.PrecisionRecall != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderPrecisionRecall", "chart-pr-curve", _experiment.Charts.PrecisionRecall);
+                
+                if (_experiment.Charts.ProbabilityDist != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderProbabilityDist", "chart-prob-dist", _experiment.Charts.ProbabilityDist);
+
+                if (_experiment.Charts.ClassComparison != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderClassComparison", "chart-class-comp", _experiment.Charts.ClassComparison);
+
+                if (_experiment.Charts.FeatureImportance != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderFeatureImportance", "chart-feat-imp-cls", _experiment.Charts.FeatureImportance);
+                
+                if (_experiment.Charts.CrossValidation != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderCrossValidation", "chart-cv-variance", _experiment.Charts.CrossValidation);
+            }
+            else if (_experiment.TaskType.Equals("regression", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_experiment.Charts.ActualVsPredicted != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderActualVsPredicted", "chart-actual-pred", _experiment.Charts.ActualVsPredicted);
+                
+                if (_experiment.Charts.ResidualsScatter != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderResidualsScatter", "chart-residuals-scatter", _experiment.Charts.ResidualsScatter);
+                
+                if (_experiment.Charts.ResidualsDistribution != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderResidualsDistribution", "chart-residuals-dist", _experiment.Charts.ResidualsDistribution);
+                
+                if (_experiment.Charts.QqPlot != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderQqPlot", "chart-qq-plot", _experiment.Charts.QqPlot);
+
+                if (_experiment.Charts.FeatureImportance != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderFeatureImportance", "chart-feat-imp-reg", _experiment.Charts.FeatureImportance);
+
+                if (_experiment.Charts.CrossValidation != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderCrossValidation", "chart-cv-variance", _experiment.Charts.CrossValidation);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error rendering charts on Metrics page");
         }
     }
 }
@@ -165,6 +309,41 @@
         display: grid;
         grid-template-columns: 1fr;
         gap: 32px;
+    }
+
+    /* CHART STYLES */
+    .visualization-section {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    .chart-card {
+        padding: 24px;
+        min-height: 400px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chart-header {
+        margin-bottom: 16px;
+        font-weight: 600;
+        color: var(--text-h1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .plotly-container {
+        flex: 1;
+        width: 100%;
+        min-height: 300px;
     }
 
     .matrix-container, .report-container {

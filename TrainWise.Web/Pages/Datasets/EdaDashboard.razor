@@ -1,163 +1,358 @@
 @page "/datasets/{Id}/eda"
 @inject TrainWise.Web.Services.Api.DatasetApi DatasetApi
 @inject IJSRuntime JS
+@using TrainWise.Web.Models
 @using TrainWise.Web.Components.Common
 
-<div class="eda-page">
+<link href="css/eda_dashboard.css" rel="stylesheet" />
+
+<div class="eda-container">
     <section class="tw-section-header animate-fade-up">
-        <h1 class="text-gradient">Exploratory Data Analysis</h1>
-        <p class="subtitle">Deep dive into feature distributions, correlations, and data quality metrics.</p>
+        <div class="header-flex">
+            <div>
+                <h1 class="text-gradient">Dataset Intelligence</h1>
+                <p class="subtitle">Automated profiling, quality scoring, and ML readiness report.</p>
+            </div>
+            @if (_intelligence is not null)
+            {
+                <div class="quality-badge-container">
+                    <div class="quality-score-circle" style="border-color: @GetQualityColor(0.2); color: #ffffff; text-shadow: 0 0 15px @GetQualityColor(0.5);">
+                        @_intelligence.QualityReport.OverallScore.ToString("0")
+                    </div>
+                    <span class="stat-label">Health Score</span>
+                </div>
+            }
+        </div>
     </section>
 
     @if (_loading)
     {
-        <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
+        <div class="tw-card animate-fade-up" style="text-align: center; padding: 80px;">
             <div class="loading-spinner"></div>
-            <p class="stat-label" style="margin-top: 16px;">Scanning Dataset Structure...</p>
+            <p class="stat-label" style="margin-top: 24px;">Running Automated Intelligence Pipeline...</p>
+            <p class="text-muted" style="font-size: 0.9rem;">Analyzing distributions, correlations, and anomalies.</p>
         </div>
     }
-    else if (_eda is null || _summary is null)
+    else if (_intelligence is null)
     {
         <div class="tw-card empty-state animate-fade-up">
-            <div class="empty-icon">📉</div>
-            <h3>Analysis Unavailable</h3>
-            <p class="subtitle">The EDA report could not be generated for this dataset.</p>
+            <div class="empty-icon">⚠️</div>
+            <h3>Profiling Failed</h3>
+            <p class="subtitle">We couldn't analyze this dataset. Ensure the format is valid CSV/Excel.</p>
+            <button class="tw-btn-primary" @onclick="LoadIntelligence">Try Again</button>
         </div>
     }
     else
     {
-        <div class="eda-summary-grid animate-fade-up">
-            <div class="tw-stat-card">
-                <span class="stat-label">Duplicate Rows</span>
-                <span class="stat-number">@_eda.DuplicateRows</span>
-                <span class="stat-label">(@_eda.DuplicatePercentage.ToString("0.##")%)</span>
-            </div>
-            <div class="tw-stat-card">
-                <span class="stat-label">Memory Footprint</span>
-                <span class="stat-number">@_eda.MemoryUsageMb.ToString("0.00")</span>
-                <span class="stat-label">Megabytes</span>
-            </div>
-            <div class="tw-stat-card">
-                <span class="stat-label">Missing Values</span>
-                <span class="stat-number">@(_summary.MissingValues.Values.Sum(v => v.Count))</span>
-                <span class="stat-label">Cells Affected</span>
-            </div>
-            <div class="tw-stat-card">
-                <span class="stat-label">Outlier Density</span>
-                <span class="stat-number">@(_eda.OutliersByColumn.Values.Average(v => v.Percentage).ToString("0.##"))%</span>
-                <span class="stat-label">Dataset Average</span>
-            </div>
+        <div class="eda-tabs animate-fade-up">
+            <div class="eda-tab @(_activeTab == "overview" ? "active" : "")" @onclick="@(() => SetTab("overview"))">Overview</div>
+            <div class="eda-tab @(_activeTab == "quality" ? "active" : "")" @onclick="@(() => SetTab("quality"))">Data Quality</div>
+            <div class="eda-tab @(_activeTab == "features" ? "active" : "")" @onclick="@(() => SetTab("features"))">Feature Profiles</div>
+            <div class="eda-tab @(_activeTab == "relationships" ? "active" : "")" @onclick="@(() => SetTab("relationships"))">Relationships</div>
         </div>
 
-        <div class="chart-grid animate-fade-up">
-            <div class="tw-card chart-container">
-                <h3>📊 Feature Correlation Matrix</h3>
-                <div id="eda-corr" class="plotly-chart"></div>
-            </div>
-            <div class="tw-card chart-container">
-                <h3>📈 Class Distribution</h3>
-                <div id="eda-class" class="plotly-chart"></div>
-            </div>
-        </div>
+        @if (_activeTab == "overview")
+        {
+            <div class="tab-content animate-fade-in">
+                <div class="overview-stats">
+                    <div class="stat-item">
+                        <span class="stat-value">@_intelligence.Overview.RowCount.ToString("N0")</span>
+                        <span class="stat-label">Total Rows</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">@_intelligence.Overview.ColumnCount</span>
+                        <span class="stat-label">Columns</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">@FormatSize(_intelligence.Overview.SizeBytes)</span>
+                        <span class="stat-label">Memory Size</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">@(_intelligence.Overview.MissingPercentage.ToString("0.1"))%</span>
+                        <span class="stat-label">Missing Cells</span>
+                    </div>
+                </div>
 
-        <div class="chart-grid secondary-charts animate-fade-up">
-            <div class="tw-card chart-container">
-                <h3>🔍 Missing Values by Column (%)</h3>
-                <div id="eda-missing" class="plotly-chart"></div>
+                <div class="chart-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 24px;">
+                    <div class="tw-card">
+                        <h3>Type Distribution</h3>
+                        <div id="type-dist-chart" class="intelligence-chart"></div>
+                    </div>
+                    <div class="tw-card">
+                        <h3>Problem Detection</h3>
+                        <div class="info-group" style="margin-top: 20px;">
+                            <div class="info-row">
+                                <span class="text-muted">Target Column:</span>
+                                <span class="feature-badge">@_intelligence.Overview.TargetColumn</span>
+                            </div>
+                            <div class="info-row" style="margin-top: 12px;">
+                                <span class="text-muted">Detected Task:</span>
+                                <span class="stat-value" style="font-size: 1.2rem; display: block; margin-top: 4px;">@_intelligence.Overview.ProblemType</span>
+                            </div>
+                            <div class="info-row" style="margin-top: 12px;">
+                                <span class="text-muted">Sparsity Score:</span>
+                                <span>@(_intelligence.Overview.SparsityScore.ToString("0.00"))</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="tw-card chart-container">
-                <h3>🛡️ Outliers detected per Feature (%)</h3>
-                <div id="eda-outliers" class="plotly-chart"></div>
+        }
+        else if (_activeTab == "quality")
+        {
+            <div class="tab-content animate-fade-in">
+                <div class="chart-grid" style="grid-template-columns: 1.5fr 1fr;">
+                    <div class="tw-card">
+                        <h3>Critical Issues</h3>
+                        @if (!_intelligence.QualityReport.Issues.Any())
+                        {
+                            <p class="text-muted">No major issues detected. Your data looks clean!</p>
+                        }
+                        else
+                        {
+                            <div class="alert-list">
+                                @foreach (var issue in _intelligence.QualityReport.Issues)
+                                {
+                                    <div class="eda-alert @(issue.Severity == "Danger" ? "eda-alert-danger" : "eda-alert-warning")">
+                                        <span class="icon">@(issue.Severity == "Danger" ? "❌" : "⚠️")</span>
+                                        <div>
+                                            <strong>@issue.Type</strong>: @issue.Message
+                                            @if (!string.IsNullOrEmpty(issue.Column)) { <span class="feature-badge" style="font-size: 0.7rem; margin-left: 8px;">@issue.Column</span> }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="tw-card">
+                        <h3>ML Readiness</h3>
+                        <div class="rec-card" style="border-left-color: @( _intelligence.MlReadiness.IsReady ? "#00f2ff" : "#ff5630")">
+                            <div class="rec-title">Status: @(_intelligence.MlReadiness.IsReady ? "Ready for Training" : "Requires Preprocessing")</div>
+                            <div class="rec-body">
+                                <ul>
+                                    @foreach (var step in _intelligence.MlReadiness.RequiredPreprocessing)
+                                    {
+                                        <li>@step</li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                        <h4 style="margin-top: 20px;">Suggested Models</h4>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                            @foreach (var model in _intelligence.MlReadiness.SuitableModels)
+                            {
+                                <span class="feature-badge">@model</span>
+                            }
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+        }
+        else if (_activeTab == "features")
+        {
+            <div class="tab-content animate-fade-in">
+                <div class="feature-grid">
+                    @foreach (var feature in _intelligence.Features)
+                    {
+                        <div class="feature-card">
+                            <div class="feature-header">
+                                <span class="feature-title">@feature.Name</span>
+                                <span class="feature-badge">@feature.Type</span>
+                            </div>
+                            
+                            <div class="feature-stats-inline">
+                                <div class="mini-stat">
+                                    <span class="mini-stat-val">@feature.UniqueCount</span>
+                                    <span class="mini-stat-lbl">Unique</span>
+                                </div>
+                                <div class="mini-stat">
+                                    <span class="mini-stat-val">@feature.MissingPercentage.ToString("0.1")%</span>
+                                    <span class="mini-stat-lbl">Missing</span>
+                                </div>
+                                <div class="mini-stat">
+                                    @if (feature.Type == "numerical")
+                                    {
+                                        <span class="mini-stat-val">@feature.OutlierPercentage.ToString("0.1")%</span>
+                                        <span class="mini-stat-lbl">Outliers</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="mini-stat-val">@feature.UniqueRatio.ToString("P0")</span>
+                                        <span class="mini-stat-lbl">Ratio</span>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (!feature.IsTarget && feature.RelevanceScore > 0)
+                            {
+                                <div class="relevance-container">
+                                    <div class="relevance-header">
+                                        <span>Predictive Relevance</span>
+                                        <span>@((feature.RelevanceScore * 100).ToString("0"))%</span>
+                                    </div>
+                                    <div class="relevance-bar-bg">
+                                        <div class="relevance-bar-fill" style="width: @(feature.RelevanceScore * 100)%;"></div>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (feature.Type == "numerical" && feature.Stats.Count > 0)
+                            {
+                                <div class="deep-stats-grid" style="margin-top: 8px; display: flex; justify-content: space-between; color: #cbd5e1; font-size: 0.75rem;">
+                                    <span>Skew: @feature.Stats["skew"].ToString("0.##")</span>
+                                    <span>Kurt: @feature.Stats["kurtosis"].ToString("0.##")</span>
+                                    <span>Zeros: @feature.Stats["zeros"].ToString("N0")</span>
+                                </div>
+                            }
+
+                            <div id="chart-@feature.Name.Replace(" ", "-")" class="intelligence-chart" style="height: 140px;"></div>
+
+                            @if (feature.Alerts.Any())
+                            {
+                                <div class="alert-list" style="margin-top: 8px;">
+                                    @foreach (var alert in feature.Alerts)
+                                    {
+                                        <div class="eda-alert eda-alert-warning" style="padding: 4px 8px; font-size: 0.75rem;">
+                                            <span>⚠️</span> @alert
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else if (_activeTab == "relationships")
+        {
+            <div class="tab-content animate-fade-in">
+                <div class="tw-card heatmap-container">
+                    <h3>Correlation Matrix</h3>
+                    <div id="corr-matrix-large" style="height: 500px;"></div>
+                </div>
+
+                @if (_intelligence.Correlations.HighCorrelations.Any())
+                {
+                    <div class="tw-card" style="margin-top: 24px;">
+                        <h3>High Correlations (Collinearity Risk)</h3>
+                        <div class="feature-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                            @foreach (var high in _intelligence.Correlations.HighCorrelations)
+                            {
+                                <div class="eda-alert eda-alert-danger">
+                                    <span>💥</span> @high.Feature: <strong>@high.Correlation.ToString("0.00")</strong>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     }
 </div>
 
 @code {
     [Parameter] public string? Id { get; set; }
-    private TrainWise.Web.Models.EdaReport? _eda;
-    private TrainWise.Web.Models.DatasetSummary? _summary;
+    private DatasetIntelligence? _intelligence;
     private bool _loading = true;
-    private bool _chartsRendered;
+    private string _activeTab = "overview";
+    private bool _chartsRendered = false;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Guid.TryParse(Id, out var datasetId)) { _loading = false; return; }
-        _summary = await DatasetApi.GetSummaryAsync(datasetId);
-        var target = _summary?.Columns.LastOrDefault();
-        _eda = await DatasetApi.GetEdaAsync(datasetId, target);
+        await LoadIntelligence();
+    }
+
+    private async Task LoadIntelligence()
+    {
+        _loading = true;
+        _intelligence = null;
+        StateHasChanged();
+        
+        if (Guid.TryParse(Id, out var datasetId))
+        {
+            _intelligence = await DatasetApi.GetIntelligenceAsync(datasetId);
+        }
         _loading = false;
         _chartsRendered = false;
+        StateHasChanged();
+    }
+
+    private async Task SetTab(string tab)
+    {
+        _activeTab = tab;
+        _chartsRendered = false;
+        StateHasChanged();
+        // Wait for render to finish before calling JS
+        await Task.Delay(100);
+        await RenderCharts();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_chartsRendered || _eda is null || _summary is null) return;
-        
-        try {
-            await JS.InvokeVoidAsync("PlotlyInterop.renderCorrelationHeatmap", "eda-corr", _summary.CorrelationMatrix, _summary.Columns);
-
-            var classDist = _eda.TargetDistribution ?? _summary.ClassDistribution;
-            if (classDist is not null && classDist.Count > 0)
-            {
-                await JS.InvokeVoidAsync("PlotlyInterop.renderClassDistribution", "eda-class", classDist.Keys.ToList(), classDist.Values.ToList());
-            }
-
-            var missingLabels = _summary.MissingValues.Keys.ToList();
-            var missingVals = _summary.MissingValues.Values.Select(v => v.Percentage).ToList();
-            await JS.InvokeVoidAsync("PlotlyInterop.renderSimpleBar", "eda-missing", missingLabels, missingVals, "Missing Value %");
-
-            var outlierLabels = _eda.OutliersByColumn.Keys.ToList();
-            var outlierVals = _eda.OutliersByColumn.Values.Select(v => v.Percentage).ToList();
-            await JS.InvokeVoidAsync("PlotlyInterop.renderHorizontalBar", "eda-outliers", outlierLabels, outlierVals, "Outlier %");
-            _chartsRendered = true;
-        } catch (Exception ex) {
-            Console.WriteLine("Chart render error: " + ex.Message);
+        if (!_loading && _intelligence is not null && !_chartsRendered)
+        {
+            await RenderCharts();
         }
     }
+
+    private async Task RenderCharts()
+    {
+        if (_intelligence is null) return;
+
+        try
+        {
+            if (_activeTab == "overview")
+            {
+                var labels = _intelligence.Overview.TypeDistribution.Keys.ToList();
+                var vals = _intelligence.Overview.TypeDistribution.Values.Select(v => (double)v).ToList();
+                await JS.InvokeVoidAsync("PlotlyInterop.renderClassDistribution", "type-dist-chart", labels, vals);
+            }
+            else if (_activeTab == "features")
+            {
+                foreach (var feature in _intelligence.Features)
+                {
+                    var divId = $"chart-{feature.Name.Replace(" ", "-")}";
+                    if (feature.Type == "numerical" && feature.HistogramValues is not null)
+                    {
+                        await JS.InvokeVoidAsync("PlotlyInterop.renderDistributionHistogram", divId, feature.HistogramLabels, feature.HistogramValues, "#00F2FF");
+                    }
+                    else if (feature.Type == "categorical" && feature.TopCategories is not null)
+                    {
+                        var labels = feature.TopCategories.Select(c => c.Category).ToList();
+                        var counts = feature.TopCategories.Select(c => (double)c.Count).ToList();
+                        await JS.InvokeVoidAsync("PlotlyInterop.renderDistributionHistogram", divId, labels, counts, "#185FA5");
+                    }
+                }
+            }
+            else if (_activeTab == "relationships")
+            {
+                await JS.InvokeVoidAsync("PlotlyInterop.renderCorrelationHeatmap", "corr-matrix-large", _intelligence.Correlations.Matrix, _intelligence.Correlations.Columns);
+            }
+            _chartsRendered = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Chart error: " + ex.Message);
+        }
+    }
+
+    private string GetQualityColor(double alpha) => _intelligence?.QualityReport.RiskLevel switch
+    {
+        "Low" => $"rgba(0, 242, 255, {alpha})",
+        "Medium" => $"rgba(255, 171, 0, {alpha})",
+        _ => $"rgba(255, 86, 48, {alpha})"
+    };
+
+    private string FormatSize(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB" };
+        double val = bytes;
+        int unitIndex = 0;
+        while (val >= 1024 && unitIndex < units.Length - 1)
+        {
+            val /= 1024;
+            unitIndex++;
+        }
+        return $"{val:N1} {units[unitIndex]}";
+    }
 }
-
-<style>
-    .eda-page {
-        display: flex;
-        flex-direction: column;
-        gap: 32px;
-    }
-
-    .eda-summary-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 24px;
-    }
-
-    .chart-grid {
-        display: grid;
-        grid-template-columns: 1.5fr 1fr;
-        gap: 24px;
-    }
-
-    .secondary-charts {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .chart-container h3 {
-        font-size: 1.1rem;
-        margin-bottom: 24px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: var(--text-h1);
-    }
-
-    .plotly-chart {
-        height: 400px;
-        width: 100%;
-        background: rgba(255, 255, 255, 0.01);
-        border-radius: 12px;
-    }
-
-    @@media (max-width: 1200px) {
-        .eda-summary-grid { grid-template-columns: repeat(2, 1fr); }
-        .chart-grid { grid-template-columns: 1fr; }
-    }
-</style>

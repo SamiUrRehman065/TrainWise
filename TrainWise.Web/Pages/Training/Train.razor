@@ -13,15 +13,7 @@
         <p class="subtitle">Configure your preprocessing pipeline, select a model, and start training on your data.</p>
     </section>
 
-    @if (!SessionState.IsAuthenticated)
-    {
-        <div class="tw-card animate-fade-up">
-            <p>Please <a href="/login">sign in</a> to train models.</p>
-        </div>
-    }
-    else
-    {
-        <div class="train-grid">
+    <div class="train-grid">
             <!-- MAIN CONFIGURATION -->
             <div class="train-main animate-fade-up">
                 <div class="tw-card config-card">
@@ -217,10 +209,14 @@
                             </div>
                             <div class="result-summary">
                                 <div class="summary-item">
-                                    <label>Accuracy</label>
-                                    <span class="text-gradient">94.2%</span>
+                                    <label>@(_request.TaskType.Equals("classification", StringComparison.OrdinalIgnoreCase) ? "Accuracy" : "R² Score")</label>
+                                    <span class="text-gradient">
+                                        @(_request.TaskType.Equals("classification", StringComparison.OrdinalIgnoreCase) 
+                                            ? (_result.ClassificationMetrics?.Accuracy.ToString("P1") ?? "N/A") 
+                                            : (_result.RegressionMetrics?.R2Score.ToString("F3") ?? "N/A"))
+                                    </span>
                                 </div>
-                                <button class="tw-btn-primary btn-full" @onclick='() => NavManager.NavigateTo("/experiments")'>
+                                <button class="tw-btn-primary btn-full" @onclick='() => NavManager.NavigateTo($"/experiments/{_result.ExperimentId}")'>
                                     View Full Report
                                 </button>
                             </div>
@@ -246,7 +242,6 @@
                 </div>
             </div>
         </div>
-    }
 </div>
 
 @code {
@@ -262,6 +257,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         await LoadDatasets();
     }
 

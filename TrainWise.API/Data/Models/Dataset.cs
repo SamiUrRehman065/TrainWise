@@ -25,6 +25,9 @@ public sealed class Dataset
     public int RowCount { get; set; }
 
     public int ColumnCount { get; set; }
+    
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public long SizeBytes { get; set; }
 
     public DateTime UploadedAt { get; set; }
 

@@ -8,13 +8,7 @@
 @using ExperimentModel = TrainWise.Web.Models.ExperimentDetail
 
 <div class="experiment-detail-page">
-    @if (!SessionState.IsAuthenticated)
-    {
-        <div class="tw-card animate-fade-up">
-            <p>Please <a href="/login">sign in</a> to view experiment results.</p>
-        </div>
-    }
-    else if (_isLoading)
+    @if (_isLoading)
     {
         <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
             <div class="loading-spinner"></div>
@@ -60,6 +54,194 @@
                 <span class="stat-number">@(_experiment.Metrics?.F1Score.ToString("P1") ?? "N/A")</span>
             </div>
         </div>
+
+        <!-- MODEL ANALYTICS SECTION -->
+        @if (_experiment.Charts != null)
+        {
+            <section class="visualization-section animate-fade-up" style="animation-delay: 0.1s;">
+                <div class="section-header">
+                    <h3>📊 Model Performance Analytics</h3>
+                    <p class="subtitle">Detailed diagnostic charts for the @_experiment.ModelName @_experiment.TaskType model.</p>
+                </div>
+
+                @if (_experiment.TaskType.Equals("classification", StringComparison.OrdinalIgnoreCase))
+                {
+                    <div class="chart-grid">
+                        <!-- Confusion Matrix -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>Confusion Matrix</span>
+                                <span class="tw-badge info">Diagnostic</span>
+                            </div>
+                            <p class="chart-desc">Shows the ratio of correct vs incorrect predictions across all classes.</p>
+                            <div id="chart-confusion-matrix" class="plotly-container"></div>
+                        </div>
+
+                        <!-- ROC Curve -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>ROC Curve</span>
+                                <span class="tw-badge success">AUC: @(_experiment.Charts.RocCurve?.Auc.ToString("F3") ?? "N/A")</span>
+                            </div>
+                            <p class="chart-desc">Visualizes the trade-off between True Positive and False Positive rates.</p>
+                            <div id="chart-roc-curve" class="plotly-container"></div>
+                        </div>
+
+                        <!-- Precision-Recall -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>Precision-Recall Curve</span>
+                                <span class="tw-badge info">AP: @(_experiment.Charts.PrecisionRecall?.AvgPrecision.ToString("F3") ?? "N/A")</span>
+                            </div>
+                            <p class="chart-desc">Measures the balance between precision and recall for different thresholds.</p>
+                            <div id="chart-pr-curve" class="plotly-container"></div>
+                        </div>
+
+                        <!-- Probability Distribution -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>Prediction Confidence</span>
+                                <span class="tw-badge info">Distribution</span>
+                            </div>
+                            <p class="chart-desc">Histogram of predicted probabilities. High peaks at 0 or 1 indicate high confidence.</p>
+                            <div id="chart-prob-dist" class="plotly-container"></div>
+                        </div>
+
+                        <!-- Class Comparison -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>Class Frequency Comparison</span>
+                                <span class="tw-badge info">Actual vs Pred</span>
+                            </div>
+                            <p class="chart-desc">Compares the ground truth labels against the model's predicted frequencies.</p>
+                            <div id="chart-class-comp" class="plotly-container"></div>
+                        </div>
+
+                        <!-- Feature Importance (Classification) -->
+                        <div class="tw-card chart-card">
+                            @if (_experiment.Charts.FeatureImportance != null)
+                            {
+                                <div class="chart-header">
+                                    <span>Feature Importance</span>
+                                    <span class="tw-badge info">Top 20</span>
+                                </div>
+                                <p class="chart-desc">Identifies which features had the most impact on model decisions.</p>
+                                <div id="chart-feat-imp-cls" class="plotly-container"></div>
+                            }
+                            else
+                            {
+                                <div class="chart-placeholder">
+                                    <span class="placeholder-icon">🚫</span>
+                                    <h4>Importance Unavailable</h4>
+                                    <p>Feature importance scores are not natively supported by this model architecture (@_experiment.ModelName).</p>
+                                    <small>Try <strong>RandomForest</strong> for native interpretability.</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (_experiment.TaskType.Equals("regression", StringComparison.OrdinalIgnoreCase))
+                {
+                    <div class="chart-grid">
+                        <!-- Actual vs Predicted -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>Actual vs Predicted</span>
+                                <span class="tw-badge info">Fit Analysis</span>
+                            </div>
+                            <p class="chart-desc">Scatter plot showing how closely predictions follow the perfect-fit diagonal.</p>
+                            <div id="chart-actual-pred" class="plotly-container"></div>
+                        </div>
+
+                        <!-- Residuals Scatter -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>Residuals Plot</span>
+                                <span class="tw-badge success">Error Scatter</span>
+                            </div>
+                            <p class="chart-desc">Distribution of errors relative to predicted values. Ideally random around zero.</p>
+                            <div id="chart-residuals-scatter" class="plotly-container"></div>
+                        </div>
+
+                        <!-- Residuals Distribution -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>Error Distribution</span>
+                                <span class="tw-badge info">Normality</span>
+                            </div>
+                            <p class="chart-desc">Histogram of residuals showing the frequency and spread of prediction errors.</p>
+                            <div id="chart-residuals-dist" class="plotly-container"></div>
+                        </div>
+
+                        <!-- Q-Q Plot -->
+                        <div class="tw-card chart-card">
+                            <div class="chart-header">
+                                <span>Q-Q Plot (Quantiles)</span>
+                                <span class="tw-badge info">Validation</span>
+                            </div>
+                            <p class="chart-desc">Compares residual distribution against a normal distribution. Points on the line = normal errors.</p>
+                            <div id="chart-qq-plot" class="plotly-container"></div>
+                        </div>
+
+                        <!-- Feature Importance (Regression) -->
+                        <div class="tw-card chart-card">
+                            @if (_experiment.Charts.FeatureImportance != null)
+                            {
+                                <div class="chart-header">
+                                    <span>Feature Importance</span>
+                                    <span class="tw-badge info">Top 20</span>
+                                </div>
+                                <p class="chart-desc">Shows the relative contribution of each feature to the target prediction.</p>
+                                <div id="chart-feat-imp-reg" class="plotly-container"></div>
+                            }
+                            else
+                            {
+                                <div class="chart-placeholder">
+                                    <span class="placeholder-icon">🚫</span>
+                                    <h4>Importance Unavailable</h4>
+                                    <p>Coefficients or importance scores are not directly available for the @_experiment.ModelName model.</p>
+                                    <small>Try <strong>LinearRegression</strong> or <strong>RandomForestRegressor</strong>.</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (_experiment.Charts.CrossValidation != null)
+                    {
+                        <div class="chart-grid" style="margin-top: 24px;">
+                            <div class="tw-card chart-card" style="grid-column: span 2; min-height: 350px;">
+                                <div class="chart-header">
+                                    <span>Cross-Validation Stability (5 Folds)</span>
+                                    <span class="tw-badge success">Mean: @(_experiment.Charts.CrossValidation.Mean.ToString("F3"))</span>
+                                </div>
+                                <p class="chart-desc">Performance across individual data folds. Consistent bars indicate a stable model.</p>
+                                <div id="chart-cv-variance" class="plotly-container"></div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Additional Regression Metrics -->
+                    <div class="regression-metrics-row">
+                        <div class="tw-stat-card">
+                            <span class="stat-label">R² Score</span>
+                            <span class="stat-number">@(_experiment.RegressionMetrics?.R2Score.ToString("F3") ?? "N/A")</span>
+                        </div>
+                        <div class="tw-stat-card">
+                            <span class="stat-label">MAE</span>
+                            <span class="stat-number">@(_experiment.RegressionMetrics?.Mae.ToString("F2") ?? "N/A")</span>
+                        </div>
+                        <div class="tw-stat-card">
+                            <span class="stat-label">RMSE</span>
+                            <span class="stat-number">@(_experiment.RegressionMetrics?.Rmse.ToString("F2") ?? "N/A")</span>
+                        </div>
+                        <div class="tw-stat-card">
+                            <span class="stat-label">MSE</span>
+                            <span class="stat-number">@(_experiment.RegressionMetrics?.Mse?.ToString("F2") ?? "N/A")</span>
+                        </div>
+                    </div>
+                }
+            </section>
+        }
 
         <div class="report-grid">
             <div class="report-main animate-fade-up">
@@ -133,8 +315,17 @@
                 </div>
 
                 <div class="tw-card tip-card">
-                    <span class="tip-icon">💡</span>
-                    <p class="tip-text">This model shows high precision but lower recall. Consider adjusting the <strong>decision threshold</strong> or applying <strong>SMOTE</strong> if you have imbalanced classes.</p>
+                    <div class="tip-card-content">
+                        <span class="tip-icon">💡</span>
+                        @if (_experiment.Result?.Recommendations?.Count > 0)
+                        {
+                            <p class="tip-text">@_experiment.Result.Recommendations[0].Message</p>
+                        }
+                        else
+                        {
+                            <p class="tip-text">Model training completed successfully. You can explore deeper insights by clicking the <strong>AI Insights</strong> button above.</p>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -148,6 +339,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
+
         if (string.IsNullOrEmpty(Id))
         {
             _isLoading = false;
@@ -172,6 +369,73 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private bool _chartsRendered = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_experiment?.Charts != null && !_chartsRendered)
+        {
+            _chartsRendered = true;
+            await RenderChartsAsync();
+        }
+    }
+
+    private async Task RenderChartsAsync()
+    {
+        if (_experiment?.Charts == null) return;
+
+        try
+        {
+            if (_experiment.TaskType.Equals("classification", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_experiment.Charts.ConfusionMatrix != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderConfusionMatrix", "chart-confusion-matrix", _experiment.Charts.ConfusionMatrix);
+                
+                if (_experiment.Charts.RocCurve != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderRocCurve", "chart-roc-curve", _experiment.Charts.RocCurve);
+                
+                if (_experiment.Charts.PrecisionRecall != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderPrecisionRecall", "chart-pr-curve", _experiment.Charts.PrecisionRecall);
+                
+                if (_experiment.Charts.ProbabilityDist != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderProbabilityDist", "chart-prob-dist", _experiment.Charts.ProbabilityDist);
+
+                if (_experiment.Charts.ClassComparison != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderClassComparison", "chart-class-comp", _experiment.Charts.ClassComparison);
+
+                if (_experiment.Charts.FeatureImportance != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderFeatureImportance", "chart-feat-imp-cls", _experiment.Charts.FeatureImportance);
+                
+                if (_experiment.Charts.CrossValidation != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderCrossValidation", "chart-cv-variance", _experiment.Charts.CrossValidation);
+            }
+            else if (_experiment.TaskType.Equals("regression", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_experiment.Charts.ActualVsPredicted != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderActualVsPredicted", "chart-actual-pred", _experiment.Charts.ActualVsPredicted);
+                
+                if (_experiment.Charts.ResidualsScatter != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderResidualsScatter", "chart-residuals-scatter", _experiment.Charts.ResidualsScatter);
+                
+                if (_experiment.Charts.ResidualsDistribution != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderResidualsDistribution", "chart-residuals-dist", _experiment.Charts.ResidualsDistribution);
+                
+                if (_experiment.Charts.QqPlot != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderQqPlot", "chart-qq-plot", _experiment.Charts.QqPlot);
+
+                if (_experiment.Charts.FeatureImportance != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderFeatureImportance", "chart-feat-imp-reg", _experiment.Charts.FeatureImportance);
+
+                if (_experiment.Charts.CrossValidation != null)
+                    await JSRuntime.InvokeVoidAsync("TrainWiseCharts.renderCrossValidation", "chart-cv-variance", _experiment.Charts.CrossValidation);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error rendering charts");
         }
     }
 
@@ -210,6 +474,82 @@
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 24px;
+    }
+
+    .visualization-section {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        margin-top: 8px;
+    }
+
+    .visualization-section .section-header {
+        margin-bottom: 8px;
+    }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    .chart-card {
+        display: flex;
+        flex-direction: column;
+        min-height: 420px;
+    }
+
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .chart-header span:first-child {
+        font-weight: 700;
+        color: var(--text-h1);
+        font-size: 0.95rem;
+    }
+
+    .chart-desc {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+
+    .plotly-container {
+        flex: 1;
+        width: 100%;
+        min-height: 280px;
+    }
+
+    .chart-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        height: 100%;
+        opacity: 0.6;
+        padding: 40px;
+    }
+
+    .placeholder-icon { font-size: 2.5rem; margin-bottom: 16px; }
+    .chart-placeholder h4 { margin-bottom: 8px; font-size: 1rem; }
+    .chart-placeholder p { font-size: 0.85rem; margin-bottom: 12px; max-width: 240px; }
+
+    .regression-metrics-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+        margin-top: 8px;
+    }
+
+    @@media (max-width: 1000px) {
+        .chart-grid { grid-template-columns: 1fr; }
+        .regression-metrics-row { grid-template-columns: repeat(2, 1fr); }
     }
 
     .report-grid {
@@ -301,19 +641,23 @@
         background: var(--accent-grad);
         padding: 1px;
         border: none;
+        position: relative;
+        overflow: hidden;
     }
 
-    .tip-card::after {
-        content: '';
-        position: absolute;
-        inset: 1px;
+    .tip-card-content {
+        position: relative;
+        z-index: 1;
+        padding: 24px;
         background: var(--bg-surface);
         border-radius: 15px;
-        z-index: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
 
-    .tip-icon { font-size: 1.5rem; position: relative; z-index: 1; }
-    .tip-text { font-size: 0.85rem; color: var(--text-body); line-height: 1.6; margin: 0; position: relative; z-index: 1; }
+    .tip-icon { font-size: 1.5rem; }
+    .tip-text { font-size: 0.85rem; color: var(--text-body); line-height: 1.6; margin: 0; }
 
     @@media (max-width: 1200px) {
         .performance-grid { grid-template-columns: repeat(2, 1fr); }

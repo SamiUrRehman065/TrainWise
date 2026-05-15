@@ -8,15 +8,7 @@
 @using TrainWise.Web.Components.Common
 
 <div class="compare-page">
-    @if (!SessionState.IsAuthenticated)
-    {
-        <div class="tw-card animate-fade-up">
-            <p>Please <a href="/login">sign in</a> to compare experiment results.</p>
-        </div>
-    }
-    else
-    {
-        <section class="tw-section-header animate-fade-up">
+    <section class="tw-section-header animate-fade-up">
             <h1 class="text-gradient">Compare Experiments</h1>
             <p class="subtitle">Select two training runs to perform a side-by-side performance analysis and feature audit.</p>
         </section>
@@ -174,7 +166,6 @@
                 </div>
             </div>
         }
-    }
 </div>
 
 @code {
@@ -187,6 +178,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         await LoadExperiments();
     }
 

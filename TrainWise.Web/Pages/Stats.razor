@@ -13,13 +13,7 @@
         <p class="subtitle">Real-time overview of your ML assets, training performance, and storage utilization.</p>
     </section>
 
-    @if (!SessionState.IsAuthenticated)
-    {
-        <div class="tw-card animate-fade-up">
-            <p>Please <a href="/login">sign in</a> to view your personal dashboard.</p>
-        </div>
-    }
-    else if (_isLoading)
+    @if (_isLoading)
     {
         <div class="tw-card animate-fade-up" style="text-align: center; padding: 80px;">
             <div class="loading-spinner"></div>
@@ -47,7 +41,7 @@
             </div>
             <div class="tw-stat-card animate-fade-up" style="animation-delay: 0.4s;">
                 <span class="stat-label">Space Used</span>
-                <span class="stat-number">@( (_stats.EstimatedSize / (1024.0 * 1024)).ToString("0.0") ) MB</span>
+                <span class="stat-number">@FormatSize(_stats.EstimatedSize)</span>
                 <div class="stat-trend">Approx. Size</div>
             </div>
         </div>
@@ -140,6 +134,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         await LoadDashboardData();
     }
 
@@ -159,6 +158,13 @@
         {
             _isLoading = false;
         }
+    }
+
+    private string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{(bytes / 1024.0):F1} KB";
+        return $"{(bytes / (1024.0 * 1024.0)):F1} MB";
     }
 
     private async Task ArchiveDatasetsAsync()

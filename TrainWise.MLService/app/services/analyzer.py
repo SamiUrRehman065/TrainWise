@@ -50,7 +50,7 @@ def analyze_dataset(file_path: str, dataset_id: str) -> DatasetSummary:
             column_types[column] = "datetime"
         else:
             if series.dtype == object:
-                parsed = pd.to_datetime(series, errors="coerce")
+                parsed = pd.to_datetime(series, errors="coerce", format="mixed")
                 if parsed.notna().mean() >= 0.8:
                     column_types[column] = "datetime"
                 else:

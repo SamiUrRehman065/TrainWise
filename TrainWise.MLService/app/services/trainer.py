@@ -24,6 +24,7 @@ from app.models.train_result import TrainResult, ClassificationMetrics, Regressi
 from app.services.analyzer import analyze_dataset, get_dataset_path, load_dataframe, register_dataset
 from app.services.model_factory import ModelFactory
 from app.services.recommendation_engine import RecommendationEngine
+from app.services.chart_builder import ChartBuilder
 
 
 def train_model(request: TrainRequest) -> TrainResult:
@@ -99,6 +100,39 @@ def train_model(request: TrainRequest) -> TrainResult:
         cv_scores,
         cv_mean,
     )
+
+    # Attach Charts
+    charts = {}
+    if request.taskType == "classification":
+        # Get probabilities if available
+        y_probs = None
+        if hasattr(model, "predict_proba"):
+            y_probs = model.predict_proba(x_test)
+        
+        labels = label_encoder.classes_.tolist() if label_encoder else sorted(y.unique().tolist())
+        result.classificationMetrics.classLabels = [str(l) for l in labels]
+        
+        charts["ConfusionMatrix"] = ChartBuilder.build_confusion_matrix(y_test, y_pred, labels)
+        charts["ClassComparison"] = ChartBuilder.build_class_comparison(y_test, y_pred, labels)
+        
+        if y_probs is not None:
+            charts["RocCurve"] = ChartBuilder.build_roc_curve(y_test, y_probs)
+            charts["PrecisionRecall"] = ChartBuilder.build_precision_recall_curve(y_test, y_probs)
+            charts["ProbabilityDist"] = ChartBuilder.build_probability_distribution(y_probs)
+        
+        charts["FeatureImportance"] = ChartBuilder.build_feature_importance(model, x_df.columns.tolist())
+        if cv_scores:
+            charts["CrossValidation"] = ChartBuilder.build_cv_metrics(cv_scores)
+    else:
+        charts["ActualVsPredicted"] = ChartBuilder.build_actual_vs_predicted(y_test, y_pred)
+        charts["ResidualsScatter"] = ChartBuilder.build_residuals_scatter(y_test, y_pred)
+        charts["ResidualsDistribution"] = ChartBuilder.build_residuals_distribution(y_test, y_pred)
+        charts["QqPlot"] = ChartBuilder.build_qq_plot(y_test, y_pred)
+        charts["FeatureImportance"] = ChartBuilder.build_feature_importance(model, x_df.columns.tolist())
+        if cv_scores:
+            charts["CrossValidation"] = ChartBuilder.build_cv_metrics(cv_scores)
+    
+    result.charts = charts
 
     y_train_pred = model.predict(x_train)
     if request.taskType == "classification":
@@ -264,6 +298,7 @@ def _build_result(
         r2Score=float(r2_score(y_test, y_pred)),
         rmse=float(mean_squared_error(y_test, y_pred, squared=False)),
         mae=float(mean_absolute_error(y_test, y_pred)),
+        mse=float(mean_squared_error(y_test, y_pred)),
     )
     return TrainResult(
         experimentId="",

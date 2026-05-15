@@ -6,13 +6,7 @@
 @using TrainWise.Web.Components.Common
 
 <div class="recommendations-page">
-    @if (!SessionState.IsAuthenticated)
-    {
-        <div class="tw-card animate-fade-up">
-            <p>Please <a href="/login">sign in</a> to view insights.</p>
-        </div>
-    }
-    else if (_isLoading)
+    @if (_isLoading)
     {
         <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
             <div class="loading-spinner"></div>
@@ -158,6 +152,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         await LoadData();
     }
 

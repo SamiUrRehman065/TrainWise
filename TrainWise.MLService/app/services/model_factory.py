@@ -19,5 +19,10 @@ class ModelFactory:
     def create(cls, name: str, **hyperparameters: Any) -> Any:
         if name not in cls._registry:
             raise ValueError(f"Unsupported model: {name}")
+        
+        # Ensure SVM has probability=True for ROC/PR curves
+        if name == "SVM" and "probability" not in hyperparameters:
+            hyperparameters["probability"] = True
+            
         model_cls = cls._registry[name]
         return model_cls(**hyperparameters)

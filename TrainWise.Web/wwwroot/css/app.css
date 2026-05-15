@@ -19,10 +19,10 @@
     --accent-grad:    linear-gradient(135deg, #818cf8 0%, #22d3ee 100%);
     
     /* Text colors */
-    --text-h1:        #f1f5f9;
-    --text-body:      #cbd5e1;
-    --text-muted:     #64748b;
-    --text-accent:    #818cf8;
+    --text-h1:        #ffffff;
+    --text-body:      #f1f5f9;
+    --text-muted:     #94a3b8;
+    --text-accent:    #a5b4fc;
     
     /* Borders */
     --border-subtle:  rgba(148, 163, 184, 0.12);

@@ -9,15 +9,7 @@
         <p class="subtitle">Customize your workspace environment and security protocols.</p>
     </section>
 
-    @if (!SessionState.IsAuthenticated)
-    {
-        <div class="tw-card">
-            <p>Please <a href="/login">sign in</a> to access settings.</p>
-        </div>
-    }
-    else
-    {
-        <div class="settings-layout">
+    <div class="settings-layout">
             <aside class="settings-sidebar">
                 <nav class="settings-nav">
                     <button class="nav-item @(_activeTab == "general" ? "active" : "")" @onclick='() => SetTab("general")'>
@@ -122,10 +114,17 @@
                 }
             </div>
         </div>
-    }
 </div>
 
 @code {
+    protected override void OnInitialized()
+    {
+        if (!SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/login");
+        }
+    }
+
     private string _activeTab = "general";
     private string _theme = "dark";
     private string _defaultTask = "classification";

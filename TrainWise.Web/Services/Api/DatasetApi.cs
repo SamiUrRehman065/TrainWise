@@ -32,6 +32,12 @@ public sealed class DatasetApi
         return await _apiClient.GetAsync<EdaReport>($"api/dataset/{datasetId}/eda{qs}");
     }
 
+    public async Task<DatasetIntelligence?> GetIntelligenceAsync(Guid datasetId, string? targetColumn = null)
+    {
+        var qs = string.IsNullOrWhiteSpace(targetColumn) ? "" : $"?targetColumn={Uri.EscapeDataString(targetColumn)}";
+        return await _apiClient.GetAsync<DatasetIntelligence>($"api/dataset/{datasetId}/intelligence{qs}");
+    }
+
     public async Task<DatasetList?> GetAllAsync()
     {
         return await _apiClient.GetAsync<DatasetList>("api/dataset");

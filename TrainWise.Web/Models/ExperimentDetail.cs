@@ -35,9 +35,7 @@ public sealed class ExperimentDetail
     }
 
     /// <summary>
-    /// Deserialized from MetricsJson for easy access.
-    /// Handles both flat ClassificationMetrics JSON and nested
-    /// TrainResultDto format (where metrics are under "ClassificationMetrics" key).
+    /// Deserialized from MetricsJson for classification tasks.
     /// </summary>
     public ClassificationMetrics? Metrics
     {
@@ -50,9 +48,7 @@ public sealed class ExperimentDetail
                 using var doc = JsonDocument.Parse(MetricsJson);
                 var root = doc.RootElement;
 
-                // Try nested ClassificationMetrics first (TrainResultDto format)
-                JsonElement metricsElement;
-                if (root.TryGetProperty("ClassificationMetrics", out metricsElement) ||
+                if (root.TryGetProperty("ClassificationMetrics", out var metricsElement) ||
                     root.TryGetProperty("classificationMetrics", out metricsElement))
                 {
                     return JsonSerializer.Deserialize<ClassificationMetrics>(
@@ -60,15 +56,68 @@ public sealed class ExperimentDetail
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 }
 
-                // Fall back to parsing the entire JSON as ClassificationMetrics
                 return JsonSerializer.Deserialize<ClassificationMetrics>(
                     MetricsJson,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
-            catch
+            catch { return null; }
+        }
+    }
+
+    /// <summary>
+    /// Deserialized from MetricsJson for regression tasks.
+    /// </summary>
+    public RegressionMetrics? RegressionMetrics
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(MetricsJson))
+                return null;
+            try
             {
+                using var doc = JsonDocument.Parse(MetricsJson);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("RegressionMetrics", out var metricsElement) ||
+                    root.TryGetProperty("regressionMetrics", out metricsElement))
+                {
+                    return JsonSerializer.Deserialize<RegressionMetrics>(
+                        metricsElement.GetRawText(),
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+
+                return JsonSerializer.Deserialize<RegressionMetrics>(
+                    MetricsJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch { return null; }
+        }
+    }
+
+    /// <summary>
+    /// Deserialized from MetricsJson for visualization.
+    /// </summary>
+    public ExperimentCharts? Charts
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(MetricsJson))
+                return null;
+            try
+            {
+                using var doc = JsonDocument.Parse(MetricsJson);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("Charts", out var chartsElement) ||
+                    root.TryGetProperty("charts", out chartsElement))
+                {
+                    return JsonSerializer.Deserialize<ExperimentCharts>(
+                        chartsElement.GetRawText(),
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
                 return null;
             }
+            catch { return null; }
         }
     }
 
@@ -87,10 +136,7 @@ public sealed class ExperimentDetail
                     MetricsJson,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
-            catch
-            {
-                return null;
-            }
+            catch { return null; }
         }
     }
 

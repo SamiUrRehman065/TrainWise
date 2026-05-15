@@ -84,6 +84,7 @@ public sealed class DatasetService : IDatasetService
             FileHash = fileHash,
             RowCount = 0,
             ColumnCount = 0,
+            SizeBytes = file.Length,
             UploadedAt = DateTime.UtcNow
         };
 
@@ -210,12 +211,20 @@ public sealed class DatasetService : IDatasetService
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.DatasetId == datasetId && d.UserId == userId, cancellationToken);
 
-        if (dataset is null)
-        {
-            return null;
-        }
+        if (dataset is null) return null;
 
         return await _mlServiceClient.EdaAsync(datasetId, targetColumn, dataset.FilePath, cancellationToken);
+    }
+
+    public async Task<DatasetIntelligenceDto?> GetIntelligenceAsync(Guid datasetId, Guid userId, string? targetColumn, CancellationToken cancellationToken)
+    {
+        var dataset = await _dbContext.Datasets
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.DatasetId == datasetId && d.UserId == userId, cancellationToken);
+
+        if (dataset is null) return null;
+
+        return await _mlServiceClient.GetIntelligenceAsync(datasetId, targetColumn, dataset.FilePath, cancellationToken);
     }
 
     public async Task<bool> DeleteAsync(Guid datasetId, Guid userId, CancellationToken cancellationToken)

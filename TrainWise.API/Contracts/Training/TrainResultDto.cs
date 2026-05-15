@@ -10,6 +10,7 @@ public sealed class TrainResultDto
     public Dictionary<string, double>? FeatureImportances { get; set; }
     public double TrainingDurationSeconds { get; set; }
     public List<RecommendationDto> Recommendations { get; set; } = new();
+    public object? Charts { get; set; }
 }
 
 public sealed class ClassificationMetricsDto
@@ -19,6 +20,7 @@ public sealed class ClassificationMetricsDto
     public double Recall { get; set; }
     public double F1Score { get; set; }
     public List<List<int>> ConfusionMatrix { get; set; } = new();
+    public List<string>? ClassLabels { get; set; }
     public double? TrainAccuracy { get; set; }
     public double? TrainF1Score { get; set; }
 }
@@ -28,6 +30,7 @@ public sealed class RegressionMetricsDto
     public double R2Score { get; set; }
     public double Rmse { get; set; }
     public double Mae { get; set; }
+    public double? Mse { get; set; }
     public double? TrainR2 { get; set; }
     public double? TrainRmse { get; set; }
 }

@@ -110,6 +110,22 @@ public sealed class DatasetController : ControllerBase
         return Ok(new { success = true });
     }
 
+    [Authorize]
+    [HttpGet("{id:guid}/intelligence")]
+    public async Task<ActionResult<DatasetIntelligenceDto>> GetIntelligenceAsync(
+        Guid id,
+        [FromQuery] string? targetColumn,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var intelligence = await _datasetService.GetIntelligenceAsync(id, userId.Value, targetColumn, cancellationToken);
+        if (intelligence is null) return NotFound("Intelligence report not found.");
+
+        return Ok(intelligence);
+    }
+
     private Guid? GetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier);

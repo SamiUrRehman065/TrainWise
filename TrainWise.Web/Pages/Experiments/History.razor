@@ -17,22 +17,14 @@
         </div>
     </section>
 
-    @if (!SessionState.IsAuthenticated)
+    @if (_isLoading)
     {
-        <div class="tw-card animate-fade-up">
-            <p>Please <a href="/login">sign in</a> to view your experiments.</p>
+        <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
+            <div class="loading-spinner"></div>
+            <p class="stat-label" style="margin-top: 16px;">Loading experiments...</p>
         </div>
     }
-    else
-    {
-        @if (_isLoading)
-        {
-            <div class="tw-card animate-fade-up" style="text-align: center; padding: 60px;">
-                <div class="loading-spinner"></div>
-                <p class="stat-label" style="margin-top: 16px;">Loading experiments...</p>
-            </div>
-        }
-        else if (_history is null || _history.Items.Count == 0)
+    else if (_history is null || _history.Items.Count == 0)
         {
             <div class="tw-card empty-state animate-fade-up">
                 <div class="empty-icon">📊</div>
@@ -92,7 +84,6 @@
                 }
             </div>
         }
-    }
 </div>
 
 @code {
@@ -109,6 +100,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!SessionState.IsAuthenticated)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         _history = await ExperimentApi.GetHistoryAsync();
         _isLoading = false;
     }

@@ -10,6 +10,8 @@ from app.services.analyzer import analyze_dataset
 from app.services.analyzer import generate_eda_report
 from app.services.trainer import train_model
 from app.services.recommendation_engine import RecommendationEngine
+from app.services.intelligence_service import compute_intelligence
+from app.models.dataset_intelligence import DatasetIntelligence
 
 router = APIRouter()
 
@@ -72,3 +74,16 @@ async def eda(request: EdaRequest) -> EdaReport:
         return generate_eda_report(request.datasetId, request.targetColumn, request.filePath)
     except ValueError as ex:
         raise HTTPException(status_code=400, detail=str(ex))
+
+@router.post("/intelligence", response_model=DatasetIntelligence)
+async def intelligence(request: EdaRequest) -> DatasetIntelligence:
+    """
+    Generate deep automated EDA and dataset intelligence.
+    """
+    try:
+        path = request.filePath or f"data/uploads/{request.datasetId}.csv" # Fallback heuristic
+        return compute_intelligence(path, request.datasetId)
+    except Exception as ex:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(ex))
